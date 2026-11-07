@@ -15,6 +15,16 @@ on:
           - android-only
           - all
         default: ios-only
+      create_release:
+        description: Create a GitHub release with the built APK and IPA
+        required: true
+        type: boolean
+        default: false
+      release_tag:
+        description: Optional tag for the GitHub release
+        required: false
+        type: string
+        default: variant-subflow-0.6.8-beta
 
 permissions:
   contents: read
@@ -182,3 +192,54 @@ jobs:
           name: ${{ steps.artifact.outputs.name }}
           path: build/ios-ipa/*.ipa
           if-no-files-found: error
+
+  release:
+    name: Publish release assets
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.create_release
+      && needs.android.result == 'success'
+      && needs.ios.result == 'success'
+    needs:
+      - android
+      - ios
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Download Android artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: nuvio-variant-subflow-debug
+          path: release-assets/android
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: nuvio-variant-subflow-ios-release
+          path: release-assets/ios
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets/final
+          apk="$(find release-assets/android -type f -name '*.apk' -print -quit)"
+          ipa="$(find release-assets/ios -type f -name '*.ipa' -print -quit)"
+          if [[ -z "${apk}" || -z "${ipa}" ]]; then
+            echo "Missing APK or IPA artifact." >&2
+            exit 1
+          fi
+          cp "${apk}" release-assets/final/nuvio-subflow-android-debug.apk
+          cp "${ipa}" release-assets/final/nuvio-subflow-ios-release.ipa
+          ls -lh release-assets/final
+
+      - name: Create or update GitHub release
+        run: |
+          tag="${RELEASE_TAG:-variant-subflow-$(date -u +%Y%m%d%H%M)}"
+          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${tag}" --repo "${GITHUB_REPOSITORY}" --clobber release-assets/final/*
+          else
+            gh release create "${tag}"               --repo "${GITHUB_REPOSITORY}"               --target "${GITHUB_REF_NAME}"               --title "SubFlow ${tag}"               --notes "SubFlow variant build with Android APK and iOS IPA."               release-assets/final/*
+          fi
