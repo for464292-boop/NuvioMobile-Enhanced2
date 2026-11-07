@@ -3167,4 +3167,24 @@
     <string name="subflow_settings_card_order_section">Card element order</string>
     <string name="subflow_settings_move_up">Move up</string>
     <string name="subflow_settings_move_down">Move down</string>
+
+    <string name="subflow_settings_translation_section">Translation &amp; speech</string>
+    <string name="subflow_settings_auto_speak_description">Play the word when its card opens.</string>
+    <string name="subflow_settings_translate_sentence_description">Show a translation for the current subtitle line.</string>
+    <string name="subflow_settings_show_meaning_description">Show the translated meaning under the word.</string>
+    <string name="subflow_settings_show_context_description">Show the original line and its translation.</string>
+    <string name="subflow_settings_show_definition_description">Show the dictionary definition when available.</string>
+    <string name="subflow_settings_show_word_speaker_description">Add a pronunciation button next to the word.</string>
+    <string name="subflow_settings_show_sentence_speaker_description">Add a speaker button to the subtitle bar.</string>
+    <string name="subflow_settings_show_navigation_description">Show previous and next subtitle buttons.</string>
+    <string name="subflow_settings_show_status_description">Show whether the word is new, learning or known.</string>
+    <string name="subflow_settings_library_section">Library &amp; backup</string>
+    <string name="subflow_settings_order_meaning">Meaning</string>
+    <string name="subflow_settings_order_context">Sentence context</string>
+    <string name="subflow_settings_order_definition">Definition</string>
+    <string name="subflow_settings_learning_color_title">Learning words</string>
+    <string name="subflow_settings_known_color_title">Known words</string>
+    <string name="subflow_settings_colors_description">Colors are applied only to classified words.</string>
+
+    <string name="subflow_settings_order_description">Use the arrows to change the order of sections in the word card.</string>
 </resources>

@@ -70,6 +70,24 @@ import nuvio.composeapp.generated.resources.subflow_settings_color_save
 import nuvio.composeapp.generated.resources.subflow_settings_card_order_section
 import nuvio.composeapp.generated.resources.subflow_settings_move_up
 import nuvio.composeapp.generated.resources.subflow_settings_move_down
+import nuvio.composeapp.generated.resources.subflow_settings_translation_section
+import nuvio.composeapp.generated.resources.subflow_settings_auto_speak_description
+import nuvio.composeapp.generated.resources.subflow_settings_translate_sentence_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_meaning_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_context_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_definition_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_word_speaker_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_sentence_speaker_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_navigation_description
+import nuvio.composeapp.generated.resources.subflow_settings_show_status_description
+import nuvio.composeapp.generated.resources.subflow_settings_library_section
+import nuvio.composeapp.generated.resources.subflow_settings_order_meaning
+import nuvio.composeapp.generated.resources.subflow_settings_order_context
+import nuvio.composeapp.generated.resources.subflow_settings_order_definition
+import nuvio.composeapp.generated.resources.subflow_settings_learning_color_title
+import nuvio.composeapp.generated.resources.subflow_settings_known_color_title
+import nuvio.composeapp.generated.resources.subflow_settings_colors_description
+import nuvio.composeapp.generated.resources.subflow_settings_order_description
 import nuvio.composeapp.generated.resources.subflow_settings_card_section
 import nuvio.composeapp.generated.resources.subflow_settings_show_meaning
 import nuvio.composeapp.generated.resources.subflow_settings_show_context
@@ -142,7 +160,7 @@ private fun SubFlowSettingsBody(
             }
         }
 
-        SettingsSection(title = stringResource(Res.string.subflow_settings_target_language), isTablet = isTablet) {
+        SettingsSection(title = stringResource(Res.string.subflow_settings_translation_section), isTablet = isTablet) {
             SettingsGroup(isTablet = isTablet) {
                 SettingsNavigationRow(
                     title = stringResource(Res.string.subflow_settings_target_language),
@@ -153,6 +171,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_auto_speak),
+                    description = stringResource(Res.string.subflow_settings_auto_speak_description),
                     checked = preferences.autoSpeakWord,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setAutoSpeakWord,
@@ -160,6 +179,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_translate_sentence),
+                    description = stringResource(Res.string.subflow_settings_translate_sentence_description),
                     checked = preferences.translateSentence,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setTranslateSentence,
@@ -189,6 +209,7 @@ private fun SubFlowSettingsBody(
             SettingsGroup(isTablet = isTablet) {
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_meaning),
+                    description = stringResource(Res.string.subflow_settings_show_meaning_description),
                     checked = preferences.showMeaning,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowMeaning,
@@ -196,6 +217,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_context),
+                    description = stringResource(Res.string.subflow_settings_show_context_description),
                     checked = preferences.showContext,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowContext,
@@ -203,6 +225,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_definition),
+                    description = stringResource(Res.string.subflow_settings_show_definition_description),
                     checked = preferences.showDefinition,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowDefinition,
@@ -210,6 +233,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_word_speaker),
+                    description = stringResource(Res.string.subflow_settings_show_word_speaker_description),
                     checked = preferences.showWordSpeaker,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowWordSpeaker,
@@ -217,6 +241,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_sentence_speaker),
+                    description = stringResource(Res.string.subflow_settings_show_sentence_speaker_description),
                     checked = preferences.showSentenceSpeaker,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowSentenceSpeaker,
@@ -224,6 +249,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_navigation),
+                    description = stringResource(Res.string.subflow_settings_show_navigation_description),
                     checked = preferences.showNavigation,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowNavigation,
@@ -231,6 +257,7 @@ private fun SubFlowSettingsBody(
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.subflow_settings_show_status),
+                    description = stringResource(Res.string.subflow_settings_show_status_description),
                     checked = preferences.showStatus,
                     isTablet = isTablet,
                     onCheckedChange = SubFlowRepository::setShowStatus,
@@ -238,32 +265,13 @@ private fun SubFlowSettingsBody(
             }
         }
 
-        SettingsSection(title = stringResource(Res.string.subflow_settings_colors_section), isTablet = isTablet) {
-            SettingsGroup(isTablet = isTablet) {
-                SubFlowColorSettingRow(
-                    title = stringResource(Res.string.subflow_settings_learning_color),
-                    colorHex = preferences.learningWordColor,
-                    isTablet = isTablet,
-                    onClick = {
-                        colorDraft = preferences.learningWordColor
-                        colorTarget = SubFlowColorTarget.Learning
-                    },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
-                SubFlowColorSettingRow(
-                    title = stringResource(Res.string.subflow_settings_known_color),
-                    colorHex = preferences.knownWordColor,
-                    isTablet = isTablet,
-                    onClick = {
-                        colorDraft = preferences.knownWordColor
-                        colorTarget = SubFlowColorTarget.Known
-                    },
-                )
-            }
-        }
-
         SettingsSection(title = stringResource(Res.string.subflow_settings_card_order_section), isTablet = isTablet) {
             SettingsGroup(isTablet = isTablet) {
+                SubFlowDescriptionRow(
+                    text = stringResource(Res.string.subflow_settings_order_description),
+                    isTablet = isTablet,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
                 preferences.cardSectionOrder.forEachIndexed { index, section ->
                     if (index > 0) SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
@@ -298,7 +306,36 @@ private fun SubFlowSettingsBody(
             }
         }
 
-        SettingsSection(title = stringResource(Res.string.subflow_settings_saved_words), isTablet = isTablet) {
+        SettingsSection(title = stringResource(Res.string.subflow_settings_colors_section), isTablet = isTablet) {
+            SettingsGroup(isTablet = isTablet) {
+                SubFlowDescriptionRow(
+                    text = stringResource(Res.string.subflow_settings_colors_description),
+                    isTablet = isTablet,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SubFlowColorSettingRow(
+                    title = stringResource(Res.string.subflow_settings_learning_color_title),
+                    colorHex = preferences.learningWordColor,
+                    isTablet = isTablet,
+                    onClick = {
+                        colorDraft = preferences.learningWordColor
+                        colorTarget = SubFlowColorTarget.Learning
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SubFlowColorSettingRow(
+                    title = stringResource(Res.string.subflow_settings_known_color_title),
+                    colorHex = preferences.knownWordColor,
+                    isTablet = isTablet,
+                    onClick = {
+                        colorDraft = preferences.knownWordColor
+                        colorTarget = SubFlowColorTarget.Known
+                    },
+                )
+            }
+        }
+
+        SettingsSection(title = stringResource(Res.string.subflow_settings_library_section), isTablet = isTablet) {
             SettingsGroup(isTablet = isTablet) {
                 SettingsNavigationRow(
                     title = stringResource(Res.string.subflow_words_title),
@@ -468,9 +505,23 @@ private fun SubFlowSettingsBody(
 
 @Composable
 private fun subFlowCardSectionLabel(section: SubFlowCardSection): String = when (section) {
-    SubFlowCardSection.Meaning -> stringResource(Res.string.subflow_settings_show_meaning)
-    SubFlowCardSection.Context -> stringResource(Res.string.subflow_settings_show_context)
-    SubFlowCardSection.Definition -> stringResource(Res.string.subflow_settings_show_definition)
+    SubFlowCardSection.Meaning -> stringResource(Res.string.subflow_settings_order_meaning)
+    SubFlowCardSection.Context -> stringResource(Res.string.subflow_settings_order_context)
+    SubFlowCardSection.Definition -> stringResource(Res.string.subflow_settings_order_definition)
+}
+
+@Composable
+private fun SubFlowDescriptionRow(text: String, isTablet: Boolean) {
+    val tokens = MaterialTheme.nuvio
+    Text(
+        text = text,
+        modifier = Modifier.padding(
+            horizontal = if (isTablet) 20.dp else 16.dp,
+            vertical = if (isTablet) 14.dp else 12.dp,
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = tokens.colors.textMuted,
+    )
 }
 
 @Composable
