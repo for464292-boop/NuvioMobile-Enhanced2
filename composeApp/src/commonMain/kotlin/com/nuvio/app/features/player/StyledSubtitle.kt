@@ -187,6 +187,20 @@ internal fun StyledSubtitleText(
             ),
             constraints = Constraints(maxWidth = availableTextWidth),
         )
+        // Draw the outline from a span-free layout so SubFlow word colors never
+        // leak into the outline color configured in the app subtitle settings.
+        val outlineLayout = measurer.measure(
+            text = AnnotatedString(text),
+            style = TextStyle(
+                color = style.outlineColor,
+                fontFamily = fontFamily,
+                fontSize = (style.fontSizeSp * scale).sp,
+                fontWeight = if (style.bold) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                textDirection = TextDirection.ContentOrLtr,
+            ),
+            constraints = Constraints(maxWidth = availableTextWidth),
+        )
         val contentHeight = with(density) { (layout.size.height + paddingY * 2).toDp() }
         val contentWidth = layout.size.width.toFloat() + paddingX * 2
         val boxWidthPx = contentWidth + edgePaddingPx * 2
@@ -249,7 +263,7 @@ internal fun StyledSubtitleText(
                             ),
                         ) {
                             drawText(
-                                layout,
+                                outlineLayout,
                                 color = outlineColor,
                                 topLeft = origin,
                                 drawStyle = Stroke(outline * 2f),
@@ -262,7 +276,7 @@ internal fun StyledSubtitleText(
                         )
                         Canvas(Modifier.fillMaxSize()) {
                             drawText(
-                                layout,
+                                outlineLayout,
                                 color = Color.Transparent,
                                 topLeft = origin,
                                 drawStyle = Stroke(outline * 2f),
@@ -277,7 +291,7 @@ internal fun StyledSubtitleText(
                 } else {
                     Canvas(Modifier.fillMaxSize()) {
                         drawText(
-                            layout,
+                            outlineLayout,
                             color = outlineColor,
                             topLeft = origin,
                             drawStyle = Stroke(outline * 2f),
