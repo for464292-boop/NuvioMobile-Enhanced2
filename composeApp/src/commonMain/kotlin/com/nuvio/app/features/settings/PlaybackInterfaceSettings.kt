@@ -48,6 +48,14 @@ internal fun PlaybackInterfaceSettings(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_default_landscape),
+                    description = stringResource(Res.string.settings_playback_default_landscape_description),
+                    checked = settings.defaultPlayerLandscape,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setDefaultPlayerLandscape,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_show_title_logo),
                     description = stringResource(Res.string.settings_playback_show_title_logo_description),
                     checked = settings.showPlayerTitleLogo,

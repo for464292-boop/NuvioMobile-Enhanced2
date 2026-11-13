@@ -11,6 +11,8 @@ internal expect object PlayerSettingsStorage {
     fun saveUseLegacyPlayerLayout(enabled: Boolean)
     fun loadShowPlayerTitleLogo(): Boolean?
     fun saveShowPlayerTitleLogo(enabled: Boolean)
+    fun loadDefaultPlayerLandscape(): Boolean?
+    fun saveDefaultPlayerLandscape(enabled: Boolean)
     fun loadShowLoadingOverlay(): Boolean?
     fun saveShowLoadingOverlay(enabled: Boolean)
     fun loadAutoSwitchPlaybackEngineOnError(): Boolean?

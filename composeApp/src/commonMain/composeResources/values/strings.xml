@@ -3044,6 +3044,13 @@
     <string name="settings_playback_page_player">Player</string>
     <string name="settings_playback_show_title_logo">Show title logo</string>
     <string name="settings_playback_show_title_logo_description">Use title artwork in the player controls when available. The title text remains as a fallback.</string>
+    <string name="settings_playback_default_landscape">Open Player in Landscape</string>
+    <string name="settings_playback_default_landscape_description">Start playback in landscape. Turn off to start in portrait; you can still rotate while watching.</string>
+    <string name="settings_playback_subtitle_orientation">Subtitle Appearance</string>
+    <string name="settings_playback_subtitle_orientation_landscape">Landscape</string>
+    <string name="settings_playback_subtitle_orientation_landscape_description">Style used while the player is in landscape.</string>
+    <string name="settings_playback_subtitle_orientation_portrait">Portrait</string>
+    <string name="settings_playback_subtitle_orientation_portrait_description">Style used while the player is in portrait.</string>
     <string name="settings_playback_control_glass">Glass Backgrounds on Controls</string>
     <string name="settings_playback_control_glass_description">Show the translucent round and pill backgrounds behind player buttons, time pills and the bottom bar. Turn off for plain icons and text.</string>
     <string name="settings_playback_show_skip_buttons">Show Skip Buttons</string>

@@ -648,6 +648,11 @@ internal fun settingsSearchEntries(
                 stringResource(Res.string.settings_playback_show_title_logo_description),
             ),
             PlaybackSearchRow(
+                "player-default-landscape",
+                stringResource(Res.string.settings_playback_default_landscape),
+                stringResource(Res.string.settings_playback_default_landscape_description),
+            ),
+            PlaybackSearchRow(
                 "player-control-glass",
                 stringResource(Res.string.settings_playback_control_glass),
                 stringResource(Res.string.settings_playback_control_glass_description),
@@ -717,6 +722,11 @@ internal fun settingsSearchEntries(
             PlaybackSearchRow("preferred-audio", stringResource(Res.string.settings_playback_preferred_audio_language), page = SettingsPage.PlaybackAudio),
             PlaybackSearchRow("secondary-audio", stringResource(Res.string.settings_playback_secondary_audio_language), page = SettingsPage.PlaybackAudio),
             PlaybackSearchRow("subtitle-font", stringResource(Res.string.subtitle_font), stringResource(Res.string.subtitle_font_import_hint)),
+            PlaybackSearchRow(
+                "subtitle-orientation",
+                stringResource(Res.string.settings_playback_subtitle_orientation),
+                stringResource(Res.string.settings_playback_subtitle_orientation_landscape_description),
+            ),
             PlaybackSearchRow("subtitle-background-opacity", stringResource(Res.string.subtitle_background_opacity)),
             PlaybackSearchRow("subtitle-background-roundness", stringResource(Res.string.subtitle_background_roundness)),
             PlaybackSearchRow("subtitle-shadow", stringResource(Res.string.subtitle_shadow), stringResource(Res.string.subtitle_shadow_description)),

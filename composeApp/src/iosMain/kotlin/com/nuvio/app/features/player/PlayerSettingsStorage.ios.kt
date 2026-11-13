@@ -22,6 +22,7 @@ actual object PlayerSettingsStorage {
     private const val playbackBrightnessKey = "playback_brightness"
     private const val useLegacyPlayerLayoutKey = "use_legacy_player_layout"
     private const val showPlayerTitleLogoKey = "show_player_title_logo"
+    private const val defaultPlayerLandscapeKey = "default_player_landscape"
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val showPlayerLoadingStatusKey = "show_player_loading_status"
     private const val pauseOverlayEnabledKey = "pause_overlay_enabled"
@@ -142,6 +143,7 @@ actual object PlayerSettingsStorage {
     private const val useLibmpvAssKey = "use_libmpv_ass"
     private val syncKeys = listOf(
         showPlayerTitleLogoKey,
+        defaultPlayerLandscapeKey,
         showLoadingOverlayKey,
         showPlayerLoadingStatusKey,
         pauseOverlayEnabledKey,
@@ -313,6 +315,16 @@ actual object PlayerSettingsStorage {
 
     actual fun saveShowPlayerTitleLogo(enabled: Boolean) {
         NSUserDefaults.standardUserDefaults.setBool(enabled, forKey = ProfileScopedKey.of(showPlayerTitleLogoKey))
+    }
+
+    actual fun loadDefaultPlayerLandscape(): Boolean? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(defaultPlayerLandscapeKey)
+        return if (defaults.objectForKey(key) != null) defaults.boolForKey(key) else null
+    }
+
+    actual fun saveDefaultPlayerLandscape(enabled: Boolean) {
+        NSUserDefaults.standardUserDefaults.setBool(enabled, forKey = ProfileScopedKey.of(defaultPlayerLandscapeKey))
     }
 
     actual fun loadShowParentalGuide(): Boolean? {
@@ -1450,6 +1462,7 @@ actual object PlayerSettingsStorage {
 
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowPlayerTitleLogo()?.let { put(showPlayerTitleLogoKey, encodeSyncBoolean(it)) }
+        loadDefaultPlayerLandscape()?.let { put(defaultPlayerLandscapeKey, encodeSyncBoolean(it)) }
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadShowPlayerLoadingStatus()?.let { put(showPlayerLoadingStatusKey, encodeSyncBoolean(it)) }
         loadPauseOverlayEnabled()?.let { put(pauseOverlayEnabledKey, encodeSyncBoolean(it)) }
@@ -1539,6 +1552,7 @@ actual object PlayerSettingsStorage {
         }
 
         payload.decodeSyncBoolean(showPlayerTitleLogoKey)?.let(::saveShowPlayerTitleLogo)
+        payload.decodeSyncBoolean(defaultPlayerLandscapeKey)?.let(::saveDefaultPlayerLandscape)
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncBoolean(showPlayerLoadingStatusKey)?.let(::saveShowPlayerLoadingStatus)
         payload.decodeSyncBoolean(pauseOverlayEnabledKey)?.let(::savePauseOverlayEnabled)

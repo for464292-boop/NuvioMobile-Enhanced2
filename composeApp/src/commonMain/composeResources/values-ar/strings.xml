@@ -2494,6 +2494,13 @@
     <string name="settings_playback_page_skip_description">تخطي المقدمات والملخصات والشارات الختامية</string>
     <string name="settings_playback_page_interface">واجهة المشغل</string>
     <string name="settings_playback_page_interface_description">عناصر التحكم والتراكبات وإيماءات اللمس والضغط المطول لتسريع التشغيل</string>
+    <string name="settings_playback_default_landscape">فتح المشغل بالوضع الأفقي</string>
+    <string name="settings_playback_default_landscape_description">ابدأ التشغيل بالوضع الأفقي. أوقف هذا الخيار للبدء بالوضع العمودي؛ يمكنك تدوير الشاشة أثناء المشاهدة.</string>
+    <string name="settings_playback_subtitle_orientation">مظهر الترجمة</string>
+    <string name="settings_playback_subtitle_orientation_landscape">أفقي</string>
+    <string name="settings_playback_subtitle_orientation_landscape_description">النمط المستخدم أثناء عرض المشغل بالوضع الأفقي.</string>
+    <string name="settings_playback_subtitle_orientation_portrait">عمودي</string>
+    <string name="settings_playback_subtitle_orientation_portrait_description">النمط المستخدم أثناء عرض المشغل بالوضع العمودي.</string>
     <string name="settings_playback_page_audio">الصوت</string>
     <string name="settings_playback_page_audio_description">اللغات المفضلة وإخراج الصوت</string>
     <string name="settings_playback_page_subtitles">الترجمة</string>

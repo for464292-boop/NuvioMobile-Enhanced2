@@ -704,6 +704,7 @@ internal object SettingsConfigTransfer {
 
     private fun exportPlayerSettings(includeCredentials: Boolean): JsonObject = buildJsonObject {
         PlayerSettingsStorage.loadUseLegacyPlayerLayout()?.let { put("use_legacy_player_layout", encodeSyncBoolean(it)) }
+        PlayerSettingsStorage.loadDefaultPlayerLandscape()?.let { put("default_player_landscape", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadShowLoadingOverlay()?.let { put("show_loading_overlay", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadShowPlayerLoadingStatus()?.let { put("show_player_loading_status", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadPauseOverlayEnabled()?.let { put("pause_overlay_enabled", encodeSyncBoolean(it)) }
@@ -802,47 +803,68 @@ internal object SettingsConfigTransfer {
     }
 
     private fun kotlinx.serialization.json.JsonObjectBuilder.exportSubtitleStyle() {
-        val style = SubtitleDevicePreferencesRepository.load(ProfileRepository.activeProfileId) ?: return
-        put("subtitle_text_color", encodeSyncString(style.textColor.toStorageHexString()))
-        put("subtitle_background_color", encodeSyncString(style.backgroundColor.toStorageHexString()))
-        put("subtitle_outline_color", encodeSyncString(style.outlineColor.toStorageHexString()))
-        put("subtitle_outline_enabled", encodeSyncBoolean(style.outlineEnabled))
-        put("subtitle_outline_width", encodeSyncInt(style.outlineWidth))
-        put("subtitle_appearance", encodeSyncString(style.appearance.encode()))
-        put("subtitle_bold", encodeSyncBoolean(style.bold))
-        put("subtitle_font_size_sp", encodeSyncInt(style.fontSizeSp))
-        put("subtitle_bottom_offset", encodeSyncInt(style.bottomOffset))
-        put("subtitle_strip_sdh", encodeSyncBoolean(style.stripSdh))
-        put("subtitle_use_forced_subtitles", encodeSyncBoolean(style.useForcedSubtitles))
-        put("subtitle_show_only_preferred_languages", encodeSyncBoolean(style.showOnlyPreferredLanguages))
+        val landscape = SubtitleDevicePreferencesRepository.load(ProfileRepository.activeProfileId) ?: return
+        val portrait = SubtitleDevicePreferencesRepository.loadPortrait(ProfileRepository.activeProfileId)
+            ?: SubtitleStyleState.PORTRAIT_DEFAULT
+        putSubtitleStyle("subtitle", landscape)
+        putSubtitleStyle("subtitle_portrait", portrait)
+    }
+
+    private fun kotlinx.serialization.json.JsonObjectBuilder.putSubtitleStyle(
+        prefix: String,
+        style: SubtitleStyleState,
+    ) {
+        put("${prefix}_text_color", encodeSyncString(style.textColor.toStorageHexString()))
+        put("${prefix}_background_color", encodeSyncString(style.backgroundColor.toStorageHexString()))
+        put("${prefix}_outline_color", encodeSyncString(style.outlineColor.toStorageHexString()))
+        put("${prefix}_outline_enabled", encodeSyncBoolean(style.outlineEnabled))
+        put("${prefix}_outline_width", encodeSyncInt(style.outlineWidth))
+        put("${prefix}_appearance", encodeSyncString(style.appearance.encode()))
+        put("${prefix}_bold", encodeSyncBoolean(style.bold))
+        put("${prefix}_font_size_sp", encodeSyncInt(style.fontSizeSp))
+        put("${prefix}_bottom_offset", encodeSyncInt(style.bottomOffset))
+        put("${prefix}_strip_sdh", encodeSyncBoolean(style.stripSdh))
+        put("${prefix}_use_forced_subtitles", encodeSyncBoolean(style.useForcedSubtitles))
+        put("${prefix}_show_only_preferred_languages", encodeSyncBoolean(style.showOnlyPreferredLanguages))
     }
 
     private fun importSubtitleStyle(payload: JsonObject) {
         val profileId = ProfileRepository.activeProfileId
-        val current = SubtitleDevicePreferencesRepository.load(profileId) ?: SubtitleStyleState.DEFAULT
-        val imported = current.copy(
-            textColor = payload.decodeSyncString("subtitle_text_color")?.let(::subtitleColorFromStorage) ?: current.textColor,
-            backgroundColor = payload.decodeSyncString("subtitle_background_color")?.let(::subtitleColorFromStorage)
-                ?: current.backgroundColor,
-            outlineColor = payload.decodeSyncString("subtitle_outline_color")?.let(::subtitleColorFromStorage)
-                ?: current.outlineColor,
-            outlineEnabled = payload.decodeSyncBoolean("subtitle_outline_enabled") ?: current.outlineEnabled,
-            outlineWidth = payload.decodeSyncInt("subtitle_outline_width") ?: current.outlineWidth,
-            appearance = payload.decodeSyncString("subtitle_appearance")?.let(::decodeSubtitleAppearance)
-                ?: current.appearance,
-            bold = payload.decodeSyncBoolean("subtitle_bold") ?: current.bold,
-            fontSizeSp = payload.decodeSyncInt("subtitle_font_size_sp") ?: current.fontSizeSp,
-            bottomOffset = payload.decodeSyncInt("subtitle_bottom_offset") ?: current.bottomOffset,
-            stripSdh = payload.decodeSyncBoolean("subtitle_strip_sdh") ?: current.stripSdh,
-            useForcedSubtitles = payload.decodeSyncBoolean("subtitle_use_forced_subtitles") ?: current.useForcedSubtitles,
-            showOnlyPreferredLanguages = payload.decodeSyncBoolean("subtitle_show_only_preferred_languages")
-                ?: current.showOnlyPreferredLanguages,
-        )
-        if (imported != current) SubtitleDevicePreferencesRepository.save(profileId, imported)
+        val currentLandscape = SubtitleDevicePreferencesRepository.load(profileId) ?: SubtitleStyleState.DEFAULT
+        val currentPortrait = SubtitleDevicePreferencesRepository.loadPortrait(profileId)
+            ?: SubtitleStyleState.PORTRAIT_DEFAULT
+        val importedLandscape = currentLandscape.applySubtitleStylePayload(payload, "subtitle")
+        val importedPortrait = currentPortrait.applySubtitleStylePayload(payload, "subtitle_portrait")
+        if (importedLandscape != currentLandscape || importedPortrait != currentPortrait) {
+            SubtitleDevicePreferencesRepository.savePair(profileId, importedLandscape, importedPortrait)
+        }
     }
+
+    private fun SubtitleStyleState.applySubtitleStylePayload(
+        payload: JsonObject,
+        prefix: String,
+    ): SubtitleStyleState = copy(
+        textColor = payload.decodeSyncString("${prefix}_text_color")?.let(::subtitleColorFromStorage) ?: textColor,
+        backgroundColor = payload.decodeSyncString("${prefix}_background_color")?.let(::subtitleColorFromStorage)
+            ?: backgroundColor,
+        outlineColor = payload.decodeSyncString("${prefix}_outline_color")?.let(::subtitleColorFromStorage)
+            ?: outlineColor,
+        outlineEnabled = payload.decodeSyncBoolean("${prefix}_outline_enabled") ?: outlineEnabled,
+        outlineWidth = payload.decodeSyncInt("${prefix}_outline_width") ?: outlineWidth,
+        appearance = payload.decodeSyncString("${prefix}_appearance")?.let(::decodeSubtitleAppearance)
+            ?: appearance,
+        bold = payload.decodeSyncBoolean("${prefix}_bold") ?: bold,
+        fontSizeSp = payload.decodeSyncInt("${prefix}_font_size_sp") ?: fontSizeSp,
+        bottomOffset = payload.decodeSyncInt("${prefix}_bottom_offset") ?: bottomOffset,
+        stripSdh = payload.decodeSyncBoolean("${prefix}_strip_sdh") ?: stripSdh,
+        useForcedSubtitles = payload.decodeSyncBoolean("${prefix}_use_forced_subtitles") ?: useForcedSubtitles,
+        showOnlyPreferredLanguages = payload.decodeSyncBoolean("${prefix}_show_only_preferred_languages")
+            ?: showOnlyPreferredLanguages,
+    )
 
     private fun importPlayerSettings(payload: JsonObject) {
         payload.decodeSyncBoolean("use_legacy_player_layout")?.let { PlayerSettingsStorage.saveUseLegacyPlayerLayout(it) }
+        payload.decodeSyncBoolean("default_player_landscape")?.let { PlayerSettingsStorage.saveDefaultPlayerLandscape(it) }
         payload.decodeSyncBoolean("show_loading_overlay")?.let { PlayerSettingsStorage.saveShowLoadingOverlay(it) }
         payload.decodeSyncBoolean("show_player_loading_status")?.let { PlayerSettingsStorage.saveShowPlayerLoadingStatus(it) }
         payload.decodeSyncBoolean("pause_overlay_enabled")?.let { PlayerSettingsStorage.savePauseOverlayEnabled(it) }

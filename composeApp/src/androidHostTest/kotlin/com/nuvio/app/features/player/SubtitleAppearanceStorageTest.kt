@@ -65,6 +65,44 @@ class SubtitleAppearanceStorageTest {
     }
 
     @Test
+    fun portraitSubtitleStyleIsStoredSeparatelyAndSharesBehaviorFlags() {
+        val landscape = SubtitleStyleState(fontSizeSp = 18, bottomOffset = 20)
+        PlayerSettingsRepository.setSubtitleStyle(landscape)
+        PlayerSettingsRepository.setSubtitleStyle(
+            SubtitleStyleState(fontSizeSp = 26, bottomOffset = 6, stripSdh = true),
+            portrait = true,
+        )
+
+        PlayerSettingsRepository.clearLocalState()
+        PlayerSettingsRepository.ensureLoaded()
+
+        val settings = PlayerSettingsRepository.uiState.value
+        assertEquals(18, settings.subtitleStyle.fontSizeSp)
+        assertEquals(20, settings.subtitleStyle.bottomOffset)
+        assertEquals(26, settings.subtitleStylePortrait.fontSizeSp)
+        assertEquals(6, settings.subtitleStylePortrait.bottomOffset)
+        assertEquals(false, settings.subtitleStylePortrait.stripSdh)
+
+        PlayerSettingsRepository.setSubtitleStyle(
+            settings.subtitleStyle.copy(stripSdh = true, useForcedSubtitles = false),
+        )
+
+        val updated = PlayerSettingsRepository.uiState.value
+        assertEquals(true, updated.subtitleStylePortrait.stripSdh)
+        assertEquals(false, updated.subtitleStylePortrait.useForcedSubtitles)
+        assertEquals(26, updated.subtitleStylePortrait.fontSizeSp)
+    }
+
+    @Test
+    fun defaultPlayerOrientationSurvivesRestart() {
+        PlayerSettingsRepository.setDefaultPlayerLandscape(false)
+        PlayerSettingsRepository.clearLocalState()
+        PlayerSettingsRepository.ensureLoaded()
+
+        assertEquals(false, PlayerSettingsRepository.uiState.value.defaultPlayerLandscape)
+    }
+
+    @Test
     fun subtitlePreferencesAreProfileScopedAndSurviveAccountStorageWipe() {
         val first = SubtitleStyleState(fontSizeSp = 14)
         val second = SubtitleStyleState(fontSizeSp = 30)

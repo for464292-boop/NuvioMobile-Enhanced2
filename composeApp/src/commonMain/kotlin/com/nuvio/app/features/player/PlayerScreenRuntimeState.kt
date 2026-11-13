@@ -113,6 +113,9 @@ internal class PlayerScreenRuntime(
 
     var gestureController: PlayerGestureController? = null
 
+    /** True when the player surface is taller than it is wide (actual orientation, not preference). */
+    var isPortraitPlayback by mutableStateOf(false)
+
     var controlsActivityTick by mutableStateOf(0)
     var controlsVisible by mutableStateOf(false)
     var showRemainingTime by mutableStateOf(false)

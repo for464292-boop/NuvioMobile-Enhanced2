@@ -4,8 +4,11 @@ import com.nuvio.app.features.profiles.ProfileRepository
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 private const val SUBTITLE_DEVICE_PREFERENCES_VERSION = 1
+private const val SUBTITLE_DEVICE_PREFERENCES_PAIR_VERSION = 2
 
 /**
  * A versioned, profile-scoped record stored only in this application installation.
@@ -28,6 +31,13 @@ private data class SubtitleDevicePreferencesRecord(
     val useForcedSubtitles: Boolean = SubtitleStyleState.DEFAULT.useForcedSubtitles,
     val showOnlyPreferredLanguages: Boolean = SubtitleStyleState.DEFAULT.showOnlyPreferredLanguages,
     val appearance: SubtitleAppearance = SubtitleAppearance(),
+)
+
+@Serializable
+private data class SubtitleDevicePreferencesPair(
+    val version: Int = SUBTITLE_DEVICE_PREFERENCES_PAIR_VERSION,
+    val landscape: SubtitleDevicePreferencesRecord = SubtitleStyleState.DEFAULT.toDevicePreferencesRecord(),
+    val portrait: SubtitleDevicePreferencesRecord = SubtitleStyleState.PORTRAIT_DEFAULT.toDevicePreferencesRecord(),
 )
 
 private val subtitleDevicePreferencesJson = Json {
@@ -68,17 +78,69 @@ private fun SubtitleDevicePreferencesRecord.toSubtitleStyleState(): SubtitleStyl
     )
 }
 
+/** Behavior flags are shared by both orientations; only appearance and position are separate. */
+internal fun SubtitleStyleState.withSharedSubtitleBehaviorFrom(other: SubtitleStyleState): SubtitleStyleState = copy(
+    stripSdh = other.stripSdh,
+    useForcedSubtitles = other.useForcedSubtitles,
+    showOnlyPreferredLanguages = other.showOnlyPreferredLanguages,
+)
+
+private fun SubtitleStyleState.normalizedForDevice(): SubtitleStyleState = copy(
+    fontSizeSp = fontSizeSp.coerceIn(subtitleFontSizeRangeSp),
+    bottomOffset = bottomOffset.coerceIn(0, 200),
+    outlineWidth = outlineWidth.coerceAtLeast(0),
+    appearance = appearance.normalized(),
+)
+
 internal fun encodeSubtitleDevicePreferences(style: SubtitleStyleState): String =
     subtitleDevicePreferencesJson.encodeToString(style.toDevicePreferencesRecord())
 
+internal fun encodeSubtitleDevicePreferencesPair(
+    landscape: SubtitleStyleState,
+    portrait: SubtitleStyleState,
+): String = subtitleDevicePreferencesJson.encodeToString(
+    SubtitleDevicePreferencesPair(
+        landscape = landscape.toDevicePreferencesRecord(),
+        portrait = portrait.toDevicePreferencesRecord(),
+    ),
+)
+
+private fun decodeSubtitleDevicePreferencesRecord(value: String): SubtitleStyleState? =
+    runCatching {
+        val record = subtitleDevicePreferencesJson.decodeFromString<SubtitleDevicePreferencesRecord>(value)
+        record.takeIf { decoded -> decoded.version in 1..SUBTITLE_DEVICE_PREFERENCES_VERSION }
+            ?.toSubtitleStyleState()
+    }.getOrNull()
+
+/**
+ * Decodes either the current two-orientation record or a legacy single-style record.
+ * Legacy records are treated as the landscape style and receive the portrait defaults.
+ */
+internal fun decodeSubtitleDevicePreferencesPair(
+    value: String?,
+): Pair<SubtitleStyleState, SubtitleStyleState>? {
+    val raw = value ?: return null
+    return runCatching {
+        val jsonObject = subtitleDevicePreferencesJson.parseToJsonElement(raw) as? JsonObject
+            ?: return@runCatching null
+        val version = (jsonObject["version"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 1
+        if (version < SUBTITLE_DEVICE_PREFERENCES_PAIR_VERSION) {
+            val landscape = decodeSubtitleDevicePreferencesRecord(raw) ?: return@runCatching null
+            landscape to SubtitleStyleState.PORTRAIT_DEFAULT.withSharedSubtitleBehaviorFrom(landscape)
+        } else {
+            val landscape = jsonObject["landscape"]?.toString()
+                ?.let(::decodeSubtitleDevicePreferencesRecord)
+                ?: return@runCatching null
+            val portrait = jsonObject["portrait"]?.toString()
+                ?.let(::decodeSubtitleDevicePreferencesRecord)
+                ?: SubtitleStyleState.PORTRAIT_DEFAULT
+            landscape to portrait.withSharedSubtitleBehaviorFrom(landscape)
+        }
+    }.getOrNull()
+}
+
 internal fun decodeSubtitleDevicePreferences(value: String?): SubtitleStyleState? =
-    value?.let {
-        runCatching {
-            val record = subtitleDevicePreferencesJson.decodeFromString<SubtitleDevicePreferencesRecord>(it)
-            record.takeIf { decoded -> decoded.version in 1..SUBTITLE_DEVICE_PREFERENCES_VERSION }
-                ?.toSubtitleStyleState()
-        }.getOrNull()
-    }
+    decodeSubtitleDevicePreferencesPair(value)?.first
 
 /**
  * Keeps subtitle appearance preferences local to this installation and profile.
@@ -88,46 +150,108 @@ internal fun decodeSubtitleDevicePreferences(value: String?): SubtitleStyleState
  * migration source before the new record has been persisted.
  */
 internal object SubtitleDevicePreferencesRepository {
-    fun loadOrMigrate(profileId: Int, legacyStyle: SubtitleStyleState): SubtitleStyleState {
-        decodeSubtitleDevicePreferences(SubtitleDevicePreferencesStorage.load(profileId))?.let {
-            return it
+    fun loadOrMigratePair(
+        profileId: Int,
+        legacyStyle: SubtitleStyleState,
+    ): Pair<SubtitleStyleState, SubtitleStyleState> {
+        decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId))?.let {
+            return normalizePair(it)
         }
 
-        val migrated = legacyStyle.normalizedForDevice()
-        migrateLegacy(profileId, migrated)
-        return decodeSubtitleDevicePreferences(SubtitleDevicePreferencesStorage.load(profileId)) ?: migrated
+        val landscape = legacyStyle.normalizedForDevice()
+        val portrait = SubtitleStyleState.PORTRAIT_DEFAULT
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
+        SubtitleDevicePreferencesStorage.saveForMigration(
+            profileId,
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
+        )
+        return decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId))
+            ?.let(::normalizePair)
+            ?: (landscape to portrait)
     }
+
+    fun loadOrMigrate(profileId: Int, legacyStyle: SubtitleStyleState): SubtitleStyleState =
+        loadOrMigratePair(profileId, legacyStyle).first
 
     /**
      * Migrates a legacy profile once. Called for every profile before account cleanup,
      * because the platform cleaner removes the whole legacy player-settings namespace.
      */
     fun migrateLegacy(profileId: Int, legacyStyle: SubtitleStyleState) {
-        if (decodeSubtitleDevicePreferences(SubtitleDevicePreferencesStorage.load(profileId)) != null) return
-        val migrated = legacyStyle.normalizedForDevice()
+        if (decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId)) != null) return
+        val landscape = legacyStyle.normalizedForDevice()
+        val portrait = SubtitleStyleState.PORTRAIT_DEFAULT
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
         SubtitleDevicePreferencesStorage.saveForMigration(
             profileId,
-            encodeSubtitleDevicePreferences(migrated),
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
         )
     }
 
     fun load(profileId: Int): SubtitleStyleState? =
-        decodeSubtitleDevicePreferences(SubtitleDevicePreferencesStorage.load(profileId))
+        decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId))?.first
+
+    fun loadPortrait(profileId: Int): SubtitleStyleState? =
+        decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId))?.second
 
     fun removeProfile(profileId: Int) {
         SubtitleDevicePreferencesStorage.remove(profileId)
     }
 
     fun save(profileId: Int, style: SubtitleStyleState) {
-        SubtitleDevicePreferencesStorage.save(profileId, encodeSubtitleDevicePreferences(style.normalizedForDevice()))
+        val current = currentPair(profileId)
+        val landscape = style.normalizedForDevice()
+        val portrait = current.second
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
+        SubtitleDevicePreferencesStorage.save(
+            profileId,
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
+        )
     }
 
-    private fun SubtitleStyleState.normalizedForDevice(): SubtitleStyleState = copy(
-        fontSizeSp = fontSizeSp.coerceIn(subtitleFontSizeRangeSp),
-        bottomOffset = bottomOffset.coerceIn(0, 200),
-        outlineWidth = outlineWidth.coerceAtLeast(0),
-        appearance = appearance.normalized(),
-    )
+    fun savePortrait(profileId: Int, style: SubtitleStyleState) {
+        val current = currentPair(profileId)
+        val landscape = current.first.normalizedForDevice()
+        val portrait = style
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
+        SubtitleDevicePreferencesStorage.save(
+            profileId,
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
+        )
+    }
+
+    fun savePair(
+        profileId: Int,
+        landscapeStyle: SubtitleStyleState,
+        portraitStyle: SubtitleStyleState,
+    ) {
+        val landscape = landscapeStyle.normalizedForDevice()
+        val portrait = portraitStyle
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
+        SubtitleDevicePreferencesStorage.save(
+            profileId,
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
+        )
+    }
+
+    private fun currentPair(profileId: Int): Pair<SubtitleStyleState, SubtitleStyleState> =
+        decodeSubtitleDevicePreferencesPair(SubtitleDevicePreferencesStorage.load(profileId))
+            ?: (SubtitleStyleState.DEFAULT to SubtitleStyleState.PORTRAIT_DEFAULT)
+
+    private fun normalizePair(
+        pair: Pair<SubtitleStyleState, SubtitleStyleState>,
+    ): Pair<SubtitleStyleState, SubtitleStyleState> {
+        val landscape = pair.first.normalizedForDevice()
+        val portrait = pair.second
+            .withSharedSubtitleBehaviorFrom(landscape)
+            .normalizedForDevice()
+        return landscape to portrait
+    }
 }
 
 internal expect object SubtitleDevicePreferencesStorage {

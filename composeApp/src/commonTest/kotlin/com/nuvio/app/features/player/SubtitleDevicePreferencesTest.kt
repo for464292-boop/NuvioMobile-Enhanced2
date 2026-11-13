@@ -63,4 +63,42 @@ class SubtitleDevicePreferencesTest {
         assertEquals(200, restored?.bottomOffset)
         assertEquals(0, restored?.outlineWidth)
     }
+
+    @Test
+    fun landscapeAndPortraitStylesRoundTripIndependently() {
+        val landscape = SubtitleStyleState(fontSizeSp = 18, bottomOffset = 20)
+        val portrait = SubtitleStyleState(fontSizeSp = 24, bottomOffset = 8)
+
+        val restored = decodeSubtitleDevicePreferencesPair(
+            encodeSubtitleDevicePreferencesPair(landscape, portrait),
+        )
+
+        assertEquals(landscape, restored?.first)
+        assertEquals(portrait, restored?.second)
+    }
+
+    @Test
+    fun legacyRecordBecomesLandscapeAndSeedsPortraitWithSharedBehavior() {
+        val legacy = SubtitleStyleState(
+            fontSizeSp = 18,
+            stripSdh = true,
+            useForcedSubtitles = false,
+            showOnlyPreferredLanguages = true,
+        )
+
+        val restored = decodeSubtitleDevicePreferencesPair(encodeSubtitleDevicePreferences(legacy))
+
+        assertEquals(legacy, restored?.first)
+        assertEquals(SubtitleStyleState.PORTRAIT_DEFAULT.fontSizeSp, restored?.second?.fontSizeSp)
+        assertEquals(SubtitleStyleState.PORTRAIT_DEFAULT.bottomOffset, restored?.second?.bottomOffset)
+        assertEquals(true, restored?.second?.stripSdh)
+        assertEquals(false, restored?.second?.useForcedSubtitles)
+        assertEquals(true, restored?.second?.showOnlyPreferredLanguages)
+    }
+
+    @Test
+    fun pairDecoderRejectsMalformedRecords() {
+        assertNull(decodeSubtitleDevicePreferencesPair("""{"version":2}"""))
+        assertNull(decodeSubtitleDevicePreferencesPair("""{"version":2,"landscape":"bad"}"""))
+    }
 }

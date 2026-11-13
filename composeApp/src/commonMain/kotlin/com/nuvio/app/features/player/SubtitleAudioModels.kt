@@ -102,8 +102,21 @@ data class SubtitleStyleState(
 ) {
     companion object {
         val DEFAULT = SubtitleStyleState()
+
+        /**
+         * Portrait playback has a narrower video area, so subtitles start slightly larger and
+         * closer to the bottom edge than the landscape defaults.
+         */
+        val PORTRAIT_DEFAULT = SubtitleStyleState(
+            fontSizeSp = 22,
+            bottomOffset = 10,
+        )
     }
 }
+
+/** Picks the subtitle appearance that belongs to the current playback orientation. */
+fun PlayerSettingsUiState.subtitleStyleFor(portrait: Boolean): SubtitleStyleState =
+    if (portrait) subtitleStylePortrait else subtitleStyle
 
 data class SubtitleSyncCue(
     val startTimeMs: Long,

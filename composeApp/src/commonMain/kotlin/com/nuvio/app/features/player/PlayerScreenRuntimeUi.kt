@@ -531,7 +531,8 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
         if (!controlsFadingOut) shownBeforeExit[0] = controlsVisible
         val displayedPositionMs = scrubbingPositionMs ?: playbackSnapshot.positionMs
         val orientationToggleSupported = rememberPlayerOrientationToggleSupported()
-        val portraitPlayback by PlayerOrientationPreference.portrait.collectAsStateWithLifecycle()
+        val portraitOverride by PlayerOrientationPreference.portrait.collectAsStateWithLifecycle()
+        val portraitPlayback = portraitOverride ?: !playerSettingsUiState.defaultPlayerLandscape
         val pipAvailable = isIos && playerSettingsUiState.miniPlayerEnabled &&
             playerController?.isPictureInPictureSupported() == true
         PlayerControlsShell(
@@ -638,7 +639,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
             },
             onOrientationToggleClick = if (orientationToggleSupported) {
                 {
-                    PlayerOrientationPreference.toggle()
+                    PlayerOrientationPreference.toggle(playerSettingsUiState.defaultPlayerLandscape)
                     controlsActivityTick += 1
                 }
             } else null,

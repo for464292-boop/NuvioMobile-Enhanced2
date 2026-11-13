@@ -36,6 +36,8 @@ fun snapToAllowedTimeout(value: Int): Int {
 data class PlayerSettingsUiState(
     val useLegacyPlayerLayout: Boolean = false,
     val showPlayerTitleLogo: Boolean = false,
+    /** Opens the player in landscape by default. When disabled the player opens in portrait. */
+    val defaultPlayerLandscape: Boolean = true,
     val showLoadingOverlay: Boolean = true,
     val showPlayerLoadingStatus: Boolean = true,
     val pauseOverlayEnabled: Boolean = true,
@@ -66,6 +68,7 @@ data class PlayerSettingsUiState(
     val preferredSubtitleLanguage: String = SubtitleLanguageOption.NONE,
     val secondaryPreferredSubtitleLanguage: String? = null,
     val subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT,
+    val subtitleStylePortrait: SubtitleStyleState = SubtitleStyleState.PORTRAIT_DEFAULT,
     val streamReuseLastLinkEnabled: Boolean = false,
     val streamReuseLastLinkCacheHours: Int = 24,
     val androidPlaybackEngine: AndroidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer,
@@ -153,6 +156,7 @@ object PlayerSettingsRepository {
     private var hasLoaded = false
     private var useLegacyPlayerLayout = false
     private var showPlayerTitleLogo = false
+    private var defaultPlayerLandscape = true
     private var showLoadingOverlay = true
     private var showPlayerLoadingStatus = true
     private var pauseOverlayEnabled = true
@@ -182,6 +186,7 @@ object PlayerSettingsRepository {
     private var preferredSubtitleLanguage = SubtitleLanguageOption.NONE
     private var secondaryPreferredSubtitleLanguage: String? = null
     private var subtitleStyle = SubtitleStyleState.DEFAULT
+    private var subtitleStylePortrait = SubtitleStyleState.PORTRAIT_DEFAULT
     private var streamReuseLastLinkEnabled = false
     private var streamReuseLastLinkCacheHours = 24
     private var androidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer
@@ -274,6 +279,7 @@ object PlayerSettingsRepository {
         hasLoaded = false
         useLegacyPlayerLayout = false
         showPlayerTitleLogo = false
+        defaultPlayerLandscape = true
         showLoadingOverlay = true
         showPlayerLoadingStatus = true
         pauseOverlayEnabled = true
@@ -303,6 +309,7 @@ object PlayerSettingsRepository {
         preferredSubtitleLanguage = SubtitleLanguageOption.NONE
         secondaryPreferredSubtitleLanguage = null
         subtitleStyle = SubtitleStyleState.DEFAULT
+        subtitleStylePortrait = SubtitleStyleState.PORTRAIT_DEFAULT
         streamReuseLastLinkEnabled = false
         streamReuseLastLinkCacheHours = 24
         androidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer
@@ -388,6 +395,7 @@ object PlayerSettingsRepository {
         hasLoaded = true
         useLegacyPlayerLayout = PlayerSettingsStorage.loadUseLegacyPlayerLayout() ?: false
         showPlayerTitleLogo = PlayerSettingsStorage.loadShowPlayerTitleLogo() ?: false
+        defaultPlayerLandscape = PlayerSettingsStorage.loadDefaultPlayerLandscape() ?: true
         showLoadingOverlay = PlayerSettingsStorage.loadShowLoadingOverlay() ?: true
         showPlayerLoadingStatus = PlayerSettingsStorage.loadShowPlayerLoadingStatus() ?: true
         pauseOverlayEnabled = PlayerSettingsStorage.loadPauseOverlayEnabled() ?: true
@@ -450,10 +458,12 @@ object PlayerSettingsRepository {
                 ?: SubtitleStyleState.DEFAULT.showOnlyPreferredLanguages,
             appearance = decodeSubtitleAppearance(PlayerSettingsStorage.loadSubtitleAppearance()),
         )
-        subtitleStyle = SubtitleDevicePreferencesRepository.loadOrMigrate(
+        val subtitleStyles = SubtitleDevicePreferencesRepository.loadOrMigratePair(
             profileId = ProfileRepository.activeProfileId,
             legacyStyle = legacySubtitleStyle,
         )
+        subtitleStyle = subtitleStyles.first
+        subtitleStylePortrait = subtitleStyles.second
         streamReuseLastLinkEnabled = PlayerSettingsStorage.loadStreamReuseLastLinkEnabled() ?: false
         streamReuseLastLinkCacheHours = PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours() ?: 24
         androidPlaybackEngine = PlayerSettingsStorage.loadAndroidPlaybackEngine()
@@ -593,6 +603,14 @@ object PlayerSettingsRepository {
         showPlayerTitleLogo = enabled
         publish()
         PlayerSettingsStorage.saveShowPlayerTitleLogo(enabled)
+    }
+
+    fun setDefaultPlayerLandscape(enabled: Boolean) {
+        ensureLoaded()
+        if (defaultPlayerLandscape == enabled) return
+        defaultPlayerLandscape = enabled
+        publish()
+        PlayerSettingsStorage.saveDefaultPlayerLandscape(enabled)
     }
 
     fun setShowLoadingOverlay(enabled: Boolean) {
@@ -835,17 +853,35 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveSecondaryPreferredSubtitleLanguage(normalized)
     }
 
-    fun setSubtitleStyle(style: SubtitleStyleState) {
+    fun setSubtitleStyle(style: SubtitleStyleState, portrait: Boolean = false) {
         ensureLoaded()
         val normalized = style.copy(
             fontSizeSp = style.fontSizeSp.coerceIn(subtitleFontSizeRangeSp),
             bottomOffset = style.bottomOffset.coerceIn(0, 200),
             appearance = style.appearance.normalized(),
         )
-        if (subtitleStyle == normalized) return
+        if (portrait) {
+            val portraitStyle = normalized.withSharedSubtitleBehaviorFrom(subtitleStyle)
+            if (subtitleStylePortrait == portraitStyle) return
+            subtitleStylePortrait = portraitStyle
+            publish()
+            SubtitleDevicePreferencesRepository.savePortrait(
+                ProfileRepository.activeProfileId,
+                portraitStyle,
+            )
+            return
+        }
+
+        val portraitStyle = subtitleStylePortrait.withSharedSubtitleBehaviorFrom(normalized)
+        if (subtitleStyle == normalized && subtitleStylePortrait == portraitStyle) return
         subtitleStyle = normalized
+        subtitleStylePortrait = portraitStyle
         publish()
-        SubtitleDevicePreferencesRepository.save(ProfileRepository.activeProfileId, normalized)
+        SubtitleDevicePreferencesRepository.savePair(
+            ProfileRepository.activeProfileId,
+            normalized,
+            portraitStyle,
+        )
     }
 
     fun setStreamReuseLastLinkEnabled(enabled: Boolean) {
@@ -1527,6 +1563,7 @@ object PlayerSettingsRepository {
         _uiState.value = PlayerSettingsUiState(
             useLegacyPlayerLayout = useLegacyPlayerLayout,
             showPlayerTitleLogo = showPlayerTitleLogo,
+            defaultPlayerLandscape = defaultPlayerLandscape,
             showLoadingOverlay = showLoadingOverlay,
             showPlayerLoadingStatus = showPlayerLoadingStatus,
             pauseOverlayEnabled = pauseOverlayEnabled,
@@ -1556,6 +1593,7 @@ object PlayerSettingsRepository {
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
             subtitleStyle = subtitleStyle,
+            subtitleStylePortrait = subtitleStylePortrait,
             streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
             streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
             androidPlaybackEngine = androidPlaybackEngine,

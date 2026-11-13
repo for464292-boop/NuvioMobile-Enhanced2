@@ -34,7 +34,9 @@ import kotlin.math.roundToInt
 actual fun LockPlayerToLandscape() {
     val activity = LocalContext.current.findActivity() ?: return
     if (!activity.shouldForceLandscapePlayer()) return
-    val portrait = PlayerOrientationPreference.portrait.collectAsState().value
+    val defaultLandscape = PlayerSettingsRepository.uiState.value.defaultPlayerLandscape
+    val portraitOverride by PlayerOrientationPreference.portrait.collectAsState()
+    val portrait = portraitOverride ?: !defaultLandscape
     val target = if (portrait) {
         ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     } else {
