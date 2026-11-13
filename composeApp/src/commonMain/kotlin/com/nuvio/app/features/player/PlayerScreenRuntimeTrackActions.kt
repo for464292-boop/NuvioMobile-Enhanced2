@@ -1,7 +1,7 @@
 package com.nuvio.app.features.player
 
 internal val PlayerScreenRuntime.subtitleStyle: SubtitleStyleState
-    get() = playerSettingsUiState.subtitleStyle
+    get() = playerSettingsUiState.subtitleStyleFor(isPortraitPlayback)
 
 internal val PlayerScreenRuntime.activeAddonSubtitleType: String
     get() = contentType ?: parentMetaType

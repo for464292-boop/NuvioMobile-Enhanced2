@@ -3,7 +3,9 @@ package com.nuvio.app.features.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.nuvio.app.core.ui.DialogButton
@@ -26,6 +28,7 @@ import com.nuvio.app.features.player.AvailableLanguageOptions
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.languageLabelForCode
+import com.nuvio.app.features.player.subtitleStyleFor
 import com.nuvio.app.features.player.toStorageHexString
 import com.nuvio.app.isIos
 import nuvio.composeapp.generated.resources.*
@@ -41,6 +44,8 @@ internal fun PlaybackSubtitleSettings(
     var showSecondarySubtitleDialog by remember { mutableStateOf(false) }
     var showLibassRenderScaleDialog by remember { mutableStateOf(false) }
     var showLibassRenderModeDialog by remember { mutableStateOf(false) }
+    var showSubtitleOrientationDialog by remember { mutableStateOf(false) }
+    var subtitleOrientationPortrait by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(if (isTablet) 18.dp else 12.dp)) {
         SettingsSection(
             title = stringResource(Res.string.settings_playback_page_subtitles),
@@ -67,14 +72,11 @@ internal fun PlaybackSubtitleSettings(
                     isTablet = isTablet,
                     onClick = { showSecondarySubtitleDialog = true },
                 )
-                if (!isIos) {
-                    SettingsGroupDivider(isTablet = isTablet)
-                    AutoSyncPlaybackSettingsRows(
-                        isTablet = isTablet,
-                        enabled = !settings.externalPlayerEnabled,
-                        preferredSubtitleLanguage = settings.preferredSubtitleLanguage,
-                    )
-                }
+                SettingsGroupDivider(isTablet = isTablet)
+                AutoSyncPlaybackSettingsRows(
+                    isTablet = isTablet,
+                    enabled = !settings.externalPlayerEnabled,
+                )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_subtitle_strip_sdh),
@@ -140,11 +142,31 @@ internal fun PlaybackSubtitleSettings(
             isTablet = isTablet,
         ) {
             val subtitleRenderingEnabled = !settings.externalPlayerEnabled
+            val editingPortrait = subtitleOrientationPortrait
+            val editingStyle = settings.subtitleStyleFor(editingPortrait)
+            SettingsGroup(isTablet = isTablet) {
+                SettingsNavigationRow(
+                    title = stringResource(Res.string.settings_playback_subtitle_orientation),
+                    description = stringResource(
+                        if (editingPortrait) {
+                            Res.string.settings_playback_subtitle_orientation_portrait
+                        } else {
+                            Res.string.settings_playback_subtitle_orientation_landscape
+                        },
+                    ),
+                    enabled = subtitleRenderingEnabled,
+                    isTablet = isTablet,
+                    onClick = { showSubtitleOrientationDialog = true },
+                )
+            }
+            Spacer(modifier = Modifier.height(if (isTablet) 18.dp else 12.dp))
             SubtitleAppearanceSettings(
-                style = settings.subtitleStyle,
+                style = editingStyle,
                 isTablet = isTablet,
                 enabled = subtitleRenderingEnabled,
-                onStyleChanged = PlayerSettingsRepository::setSubtitleStyle,
+                onStyleChanged = { style ->
+                    PlayerSettingsRepository.setSubtitleStyle(style, portrait = editingPortrait)
+                },
             )
             val showLibassSettings = !isIos && settings.androidPlaybackEngine != AndroidPlaybackEngine.Libmpv
             if (showLibassSettings) {
@@ -253,6 +275,44 @@ internal fun PlaybackSubtitleSettings(
             },
             onDismiss = { showLibassRenderModeDialog = false },
         )
+    }
+
+    if (showSubtitleOrientationDialog) {
+        DialogSurface(
+            onDismissRequest = { showSubtitleOrientationDialog = false },
+            title = stringResource(Res.string.settings_playback_subtitle_orientation),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                DialogOption(
+                    text = stringResource(Res.string.settings_playback_subtitle_orientation_landscape),
+                    description = stringResource(Res.string.settings_playback_subtitle_orientation_landscape_description),
+                    selected = !subtitleOrientationPortrait,
+                    onClick = {
+                        subtitleOrientationPortrait = false
+                        showSubtitleOrientationDialog = false
+                    },
+                )
+                DialogOption(
+                    text = stringResource(Res.string.settings_playback_subtitle_orientation_portrait),
+                    description = stringResource(Res.string.settings_playback_subtitle_orientation_portrait_description),
+                    selected = subtitleOrientationPortrait,
+                    onClick = {
+                        subtitleOrientationPortrait = true
+                        showSubtitleOrientationDialog = false
+                    },
+                )
+            }
+
+            DialogButtons {
+                DialogButton(
+                    text = stringResource(Res.string.action_done),
+                    onClick = { showSubtitleOrientationDialog = false },
+                )
+            }
+        }
     }
 }
 

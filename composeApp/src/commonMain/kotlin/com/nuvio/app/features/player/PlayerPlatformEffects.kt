@@ -21,15 +21,15 @@ data class PlayerAudioLevel(
 )
 
 object PlayerOrientationPreference {
-    private val _portrait = MutableStateFlow(false)
-    val portrait: StateFlow<Boolean> = _portrait.asStateFlow()
+    private val _portrait = MutableStateFlow<Boolean?>(null)
+    val portrait: StateFlow<Boolean?> = _portrait.asStateFlow()
 
-    fun toggle() {
-        _portrait.value = !_portrait.value
+    fun toggle(defaultLandscape: Boolean) {
+        _portrait.value = !(_portrait.value ?: !defaultLandscape)
     }
 
     internal fun reset() {
-        _portrait.value = false
+        _portrait.value = null
     }
 }
 

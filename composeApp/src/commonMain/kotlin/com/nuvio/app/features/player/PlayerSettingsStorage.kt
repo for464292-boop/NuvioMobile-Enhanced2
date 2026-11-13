@@ -11,6 +11,8 @@ internal expect object PlayerSettingsStorage {
     fun saveUseLegacyPlayerLayout(enabled: Boolean)
     fun loadShowPlayerTitleLogo(): Boolean?
     fun saveShowPlayerTitleLogo(enabled: Boolean)
+    fun loadDefaultPlayerLandscape(): Boolean?
+    fun saveDefaultPlayerLandscape(enabled: Boolean)
     fun loadShowLoadingOverlay(): Boolean?
     fun saveShowLoadingOverlay(enabled: Boolean)
     fun loadAutoSwitchPlaybackEngineOnError(): Boolean?
@@ -106,9 +108,15 @@ internal expect object PlayerSettingsStorage {
     fun loadAndroidLibmpvHardwareDecodingEnabled(): Boolean?
     fun saveAndroidLibmpvHardwareDecodingEnabled(enabled: Boolean)
     fun loadAndroidLibmpvYuv420pEnabled(): Boolean?
+    fun loadAndroidAnimeUpscaleEnabled(): Boolean?
+    fun loadAndroidAnimeLineSharpenEnabled(): Boolean?
     fun loadAndroidExoChaptersEnabled(): Boolean?
+    fun loadChapterTitleEnabled(): Boolean?
     fun saveAndroidLibmpvYuv420pEnabled(enabled: Boolean)
+    fun saveAndroidAnimeUpscaleEnabled(enabled: Boolean)
+    fun saveAndroidAnimeLineSharpenEnabled(enabled: Boolean)
     fun saveAndroidExoChaptersEnabled(enabled: Boolean)
+    fun saveChapterTitleEnabled(enabled: Boolean)
     fun loadRememberAudioDelayPerDevice(): Boolean?
     fun saveRememberAudioDelayPerDevice(enabled: Boolean)
     fun loadPersistAudioAmplification(): Boolean?
@@ -246,6 +254,7 @@ internal expect object PlayerSettingsStorage {
     fun saveIosSaturation(value: Int)
     fun loadIosGamma(): Int?
     fun saveIosGamma(value: Int)
+    fun migrateLegacySubtitlePreferencesToDeviceStore()
     fun exportToSyncPayload(): JsonObject
     fun replaceFromSyncPayload(payload: JsonObject)
 }

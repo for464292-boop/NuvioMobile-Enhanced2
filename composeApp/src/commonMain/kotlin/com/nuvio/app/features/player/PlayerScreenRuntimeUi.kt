@@ -175,9 +175,10 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
         val shouldInspectHls = activeTorrentInfoHash == null &&
             activeSourceAudioUrl == null &&
             activeSourceUrl.contains(".m3u8", ignoreCase = true)
-        activePlaybackSourceUrl = if (shouldInspectHls) null else activeSourceUrl
+        val waitForQuality = shouldInspectHls && !isLiveTvPlayback
+        activePlaybackSourceUrl = if (waitForQuality) null else activeSourceUrl
         playerQualityState = PlayerQualitySelectionState(
-            isLoading = shouldInspectHls,
+            isLoading = waitForQuality,
             sourceUrl = activeSourceUrl,
         )
         InAppLogger.debug(
@@ -216,8 +217,13 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
                 return@LaunchedEffect
             }
 
-            playerQualityState = resolved
-            activePlaybackSourceUrl = resolved.playbackUrlFor(null) ?: resolvingSourceUrl
+            if (isLiveTvPlayback) {
+                playerQualityState = resolved.copy(recommendedVariantId = null)
+                if (selectedPlayerQualityId == null) activePlaybackSourceUrl = resolvingSourceUrl
+            } else {
+                playerQualityState = resolved
+                activePlaybackSourceUrl = resolved.playbackUrlFor(null) ?: resolvingSourceUrl
+            }
             InAppLogger.info(
                 "Player/Quality",
                 "quality state ready variants=${resolved.variants.size} " +
@@ -318,6 +324,8 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
                 DisposableEffect(Unit) {
                     onDispose { active.value = false }
                 }
+                val animeContentState = remember { mutableStateOf(false) }
+                if (isAnimePlayback && !animeContentState.value) animeContentState.value = true
                 PlatformPlayerSurface(
                     sourceUrl = playerSurfaceSourceUrl,
                     sourceAudioUrl = activeSourceAudioUrl,
@@ -331,6 +339,9 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
                     initialPositionRequestKey = initialPositionRequestKey,
                     resizeMode = if (partyPanelInset > 0.dp) PlayerResizeMode.Fit else resizeMode,
                     playbackEngine = playbackEngineOverride ?: resolvedAutoEngine,
+                    animeContent = animeContentState.value,
+                    discPlaybackEnabled = !isLiveTvPlayback && !parentMetaType.equals("live", ignoreCase = true),
+                    liveStream = isLiveTvPlayback,
                     onInitialPositionHandled = { key, handled ->
                         if (active.value && playbackKey == activePlaybackKey && key == currentInitialPositionRequestKey()) {
                             initialSeekApplied = handled
@@ -354,7 +365,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
                     },
                     onError = { message ->
                         if (!active.value || playbackKey != activePlaybackKey) return@PlatformPlayerSurface
-                        if (message != null && tryRefreshCredentialedSourceAfterError(message)) {
+                        if (message != null && tryRefreshExpiredLinkAfterError(message)) {
                             return@PlatformPlayerSurface
                         }
                         // Engine failover is decided here, driven by its own player setting;
@@ -486,6 +497,10 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
         },
         headers = activeSourceHeaders,
     )
+    val seekPreviewHasDuration by remember(seekPreview) { derivedStateOf { playbackSnapshot.durationMs > 0L } }
+    LaunchedEffect(seekPreview, seekPreviewHasDuration) {
+        if (seekPreviewHasDuration) seekPreview?.warmUp(playbackSnapshot.positionMs, playbackSnapshot.durationMs)
+    }
     val userRatingTarget = currentUserRatingTarget()
     val canRate = rememberCanRate(userRatingTarget)
     val userRating = rememberUserRating(userRatingTarget.takeIf { canRate })
@@ -525,7 +540,8 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
         if (!controlsFadingOut) shownBeforeExit[0] = controlsVisible
         val displayedPositionMs = scrubbingPositionMs ?: playbackSnapshot.positionMs
         val orientationToggleSupported = rememberPlayerOrientationToggleSupported()
-        val portraitPlayback by PlayerOrientationPreference.portrait.collectAsStateWithLifecycle()
+        val portraitOverride by PlayerOrientationPreference.portrait.collectAsStateWithLifecycle()
+        val portraitPlayback = portraitOverride ?: !playerSettingsUiState.defaultPlayerLandscape
         val pipAvailable = isIos && playerSettingsUiState.miniPlayerEnabled &&
             playerController?.isPictureInPictureSupported() == true
         PlayerControlsShell(
@@ -632,7 +648,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
             },
             onOrientationToggleClick = if (orientationToggleSupported) {
                 {
-                    PlayerOrientationPreference.toggle()
+                    PlayerOrientationPreference.toggle(playerSettingsUiState.defaultPlayerLandscape)
                     controlsActivityTick += 1
                 }
             } else null,
@@ -652,7 +668,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
                 { showUserRatingSheet = true }
             } else null,
             userRating = userRating,
-            onVideoSettingsClick = if (isIos) {
+            onVideoSettingsClick = if (isIos || isAnimePlayback) {
                 {
                     showVideoSettingsModal = true
                     controlsVisible = true
@@ -674,6 +690,11 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
             onChaptersClick = if (chapters.isNotEmpty()) {
                 {
                     openChaptersPanel()
+                }
+            } else null,
+            onDiscTitlesClick = if (!isLiveTvPlayback && playbackSnapshot.discTitles.size > 1) {
+                {
+                    openDiscTitlesPanel()
                 }
             } else null,
             onLiveChannelsClick = if (isLiveTvPlayback) {
@@ -948,6 +969,9 @@ private fun PlayerScreenRuntime.openQualityPanel() {
 private fun PlayerScreenRuntime.playerQualityControlLabel(): String {
     if (playerQualityState.isLoading) return playbackResolutionLabel(forButton = true) ?: "Quality"
     val label = playerQualityState.labelFor(selectedPlayerQualityId, forButton = true)
+    if (label.isNullOrBlank() && selectedPlayerQualityId == null && playerQualityState.hasSelectableQualities) {
+        return playbackResolutionLabel(forButton = true)?.let { "Auto $it" } ?: "Auto"
+    }
     if (!label.isNullOrBlank()) {
         return if (selectedPlayerQualityId == null && playerQualityState.hasSelectableQualities) {
             "Auto $label"
@@ -986,6 +1010,16 @@ private fun PlayerScreenRuntime.RenderPlayerModals() {
         onChapterSelected = { selectChapter(it) },
         onDismiss = {
             showChaptersPanel = false
+            controlsVisible = true
+        },
+    )
+    PlayerDiscTitlesPanel(
+        visible = showDiscTitlesPanel && playbackSnapshot.discTitles.size > 1,
+        titles = playbackSnapshot.discTitles,
+        activeIndex = playbackSnapshot.activeDiscTitleIndex,
+        onTitleSelected = { selectDiscTitle(it) },
+        onDismiss = {
+            showDiscTitlesPanel = false
             controlsVisible = true
         },
     )
@@ -1087,6 +1121,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals() {
             playerController?.configureIosVideoOutput(PlayerSettingsRepository.uiState.value)
         },
         onVideoSettingsModalDismissed = { showVideoSettingsModal = false },
+        animeEnhancementStatus = playbackSnapshot.animeEnhancement,
         showSourcesPanel = showSourcesPanel,
         sourceStreamsState = sourceStreamsState,
         contentTitle = title,

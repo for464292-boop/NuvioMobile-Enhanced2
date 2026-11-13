@@ -52,6 +52,8 @@ data class PlayerLaunch(
     val subtitleExtras: SubtitleRequestExtras? = null,
     val sourceFilename: String? = null,
     val stream: com.nuvio.app.features.streams.StreamItem? = null,
+    /** The source was taken from the reuse-last-link cache, not picked fresh from add-ons. */
+    val sourceFromLinkCache: Boolean = false,
 )
 
 object PlayerLaunchStore {
@@ -304,6 +306,32 @@ data class PlayerPlaybackSnapshot(
     val chapters: List<PlayerChapter> = emptyList(),
     val castAvailable: Boolean = false,
     val castDeviceName: String? = null,
+    val animeEnhancement: AnimeEnhancementStatus? = null,
+    val discTitles: List<PlayerDiscTitle> = emptyList(),
+    val activeDiscTitleIndex: Int = -1,
+    val discExtraPlaying: Boolean = false,
+    val discFeaturePositionMs: Long = 0L,
+) {
+    val itemPositionMs: Long
+        get() = if (discExtraPlaying) discFeaturePositionMs else positionMs
+}
+
+data class PlayerDiscTitle(
+    val name: String,
+    val durationMs: Long,
+    val clipCount: Int,
+    val isFeature: Boolean,
+    val audioLanguages: List<String> = emptyList(),
+    val subtitleLanguages: List<String> = emptyList(),
+)
+
+data class AnimeEnhancementStatus(
+    val lineSharpen: Boolean,
+    val upscale: Boolean,
+    val sourceWidth: Int,
+    val sourceHeight: Int,
+    val outputWidth: Int,
+    val outputHeight: Int,
 )
 
 data class PlayerNowPlayingInfo(

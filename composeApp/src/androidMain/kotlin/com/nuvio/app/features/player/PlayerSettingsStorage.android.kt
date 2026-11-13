@@ -13,6 +13,7 @@ import com.nuvio.app.core.sync.encodeSyncInt
 import com.nuvio.app.core.sync.encodeSyncString
 import com.nuvio.app.core.sync.encodeSyncStringSet
 import com.nuvio.app.core.storage.ProfileScopedKey
+import com.nuvio.app.features.profiles.MAX_PROFILES
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -23,6 +24,7 @@ actual object PlayerSettingsStorage {
     private const val playbackBrightnessKey = "playback_brightness"
     private const val useLegacyPlayerLayoutKey = "use_legacy_player_layout"
     private const val showPlayerTitleLogoKey = "show_player_title_logo"
+    private const val defaultPlayerLandscapeKey = "default_player_landscape"
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val showPlayerLoadingStatusKey = "show_player_loading_status"
     private const val pauseOverlayEnabledKey = "pause_overlay_enabled"
@@ -63,7 +65,10 @@ actual object PlayerSettingsStorage {
     private const val androidLibmpvHardwareDecodingEnabledKey = "android_libmpv_hardware_decoding_enabled"
     private const val androidLibmpvVideoOutputKey = "android_libmpv_video_output"
     private const val androidLibmpvYuv420pEnabledKey = "android_libmpv_yuv420p_enabled"
+    private const val androidAnimeUpscaleEnabledKey = "android_anime_upscale_enabled"
+    private const val androidAnimeLineSharpenEnabledKey = "android_anime_line_sharpen_enabled"
     private const val androidPlaybackEngineKey = "android_playback_engine"
+    private const val chapterTitleEnabledKey = "chapter_title_enabled"
     private const val rememberAudioDelayPerDeviceKey = "remember_audio_delay_per_device"
     private const val persistAudioAmplificationKey = "persist_audio_amplification"
     private const val audioAmplificationDbKey = "audio_amplification_db"
@@ -152,6 +157,7 @@ actual object PlayerSettingsStorage {
     private const val vodDiskCacheSizeMbKey = "vod_disk_cache_size_mb"
     private val syncKeys = listOf(
         showPlayerTitleLogoKey,
+        defaultPlayerLandscapeKey,
         showLoadingOverlayKey,
         showPlayerLoadingStatusKey,
         pauseOverlayEnabledKey,
@@ -168,17 +174,6 @@ actual object PlayerSettingsStorage {
         secondaryPreferredAudioLanguageKey,
         preferredSubtitleLanguageKey,
         secondaryPreferredSubtitleLanguageKey,
-        subtitleTextColorKey,
-        subtitleBackgroundColorKey,
-        subtitleOutlineColorKey,
-        subtitleOutlineEnabledKey,
-        subtitleOutlineWidthKey,
-        subtitleBoldKey,
-        subtitleFontSizeSpKey,
-        subtitleBottomOffsetKey,
-        subtitleStripSdhKey,
-        subtitleUseForcedSubtitlesKey,
-        subtitleShowOnlyPreferredLanguagesKey,
         streamReuseLastLinkEnabledKey,
         streamReuseLastLinkCacheHoursKey,
         androidPlaybackEngineKey,
@@ -186,6 +181,7 @@ actual object PlayerSettingsStorage {
         androidLibmpvHardwareDecodingEnabledKey,
         androidLibmpvYuv420pEnabledKey,
         androidExoChaptersEnabledKey,
+        chapterTitleEnabledKey,
         rememberAudioDelayPerDeviceKey,
         persistAudioAmplificationKey,
         audioAmplificationDbKey,
@@ -235,7 +231,6 @@ actual object PlayerSettingsStorage {
         iosContrastKey,
         iosSaturationKey,
         iosGammaKey,
-        subtitleAppearanceKey,
         autoSwitchPlaybackEngineOnErrorKey,
     )
     private var preferences: SharedPreferences? = null
@@ -244,6 +239,7 @@ actual object PlayerSettingsStorage {
     fun initialize(context: Context) {
         appContext = context.applicationContext
         preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        SubtitleDevicePreferencesStorage.initialize(context.applicationContext)
     }
 
     internal fun applicationContext(): Context? = appContext
@@ -333,6 +329,16 @@ actual object PlayerSettingsStorage {
 
     actual fun saveShowPlayerTitleLogo(enabled: Boolean) {
         preferences?.edit()?.putBoolean(ProfileScopedKey.of(showPlayerTitleLogoKey), enabled)?.apply()
+    }
+
+    actual fun loadDefaultPlayerLandscape(): Boolean? =
+        preferences?.let { prefs ->
+            val key = ProfileScopedKey.of(defaultPlayerLandscapeKey)
+            if (prefs.contains(key)) prefs.getBoolean(key, true) else null
+        }
+
+    actual fun saveDefaultPlayerLandscape(enabled: Boolean) {
+        preferences?.edit()?.putBoolean(ProfileScopedKey.of(defaultPlayerLandscapeKey), enabled)?.apply()
     }
 
     actual fun loadShowParentalGuide(): Boolean? =
@@ -954,6 +960,26 @@ actual object PlayerSettingsStorage {
             }
         }
 
+    actual fun loadAndroidAnimeUpscaleEnabled(): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(androidAnimeUpscaleEnabledKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getBoolean(key, false)
+            } else {
+                null
+            }
+        }
+
+    actual fun loadAndroidAnimeLineSharpenEnabled(): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(androidAnimeLineSharpenEnabledKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getBoolean(key, false)
+            } else {
+                null
+            }
+        }
+
     actual fun loadAndroidExoChaptersEnabled(): Boolean? =
         preferences?.let { sharedPreferences ->
             val key = ProfileScopedKey.of(androidExoChaptersEnabledKey)
@@ -971,10 +997,41 @@ actual object PlayerSettingsStorage {
             ?.apply()
     }
 
+    actual fun saveAndroidAnimeUpscaleEnabled(enabled: Boolean) {
+        preferences
+            ?.edit()
+            ?.putBoolean(ProfileScopedKey.of(androidAnimeUpscaleEnabledKey), enabled)
+            ?.apply()
+    }
+
+    actual fun saveAndroidAnimeLineSharpenEnabled(enabled: Boolean) {
+        preferences
+            ?.edit()
+            ?.putBoolean(ProfileScopedKey.of(androidAnimeLineSharpenEnabledKey), enabled)
+            ?.apply()
+    }
+
     actual fun saveAndroidExoChaptersEnabled(enabled: Boolean) {
         preferences
             ?.edit()
             ?.putBoolean(ProfileScopedKey.of(androidExoChaptersEnabledKey), enabled)
+            ?.apply()
+    }
+
+    actual fun loadChapterTitleEnabled(): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(chapterTitleEnabledKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getBoolean(key, true)
+            } else {
+                null
+            }
+        }
+
+    actual fun saveChapterTitleEnabled(enabled: Boolean) {
+        preferences
+            ?.edit()
+            ?.putBoolean(ProfileScopedKey.of(chapterTitleEnabledKey), enabled)
             ?.apply()
     }
 
@@ -1904,8 +1961,46 @@ actual object PlayerSettingsStorage {
         saveIosInt(iosGammaKey, value)
     }
 
+    actual fun migrateLegacySubtitlePreferencesToDeviceStore() {
+        val store = preferences ?: return
+        (1..MAX_PROFILES).forEach { profileId ->
+            fun key(baseKey: String) = ProfileScopedKey.of(baseKey, profileId)
+            fun string(baseKey: String) = store.getString(key(baseKey), null)
+            fun boolean(baseKey: String, default: Boolean): Boolean? {
+                val scopedKey = key(baseKey)
+                return if (store.contains(scopedKey)) store.getBoolean(scopedKey, default) else null
+            }
+            fun integer(baseKey: String, default: Int): Int? {
+                val scopedKey = key(baseKey)
+                return if (store.contains(scopedKey)) store.getInt(scopedKey, default) else null
+            }
+
+            val defaults = SubtitleStyleState.DEFAULT
+            val legacyStyle = SubtitleStyleState(
+                textColor = subtitleColorFromStorage(string(subtitleTextColorKey)) ?: defaults.textColor,
+                backgroundColor = subtitleColorFromStorage(string(subtitleBackgroundColorKey)) ?: defaults.backgroundColor,
+                outlineColor = subtitleColorFromStorage(string(subtitleOutlineColorKey)) ?: defaults.outlineColor,
+                outlineEnabled = boolean(subtitleOutlineEnabledKey, defaults.outlineEnabled) ?: defaults.outlineEnabled,
+                outlineWidth = integer(subtitleOutlineWidthKey, defaults.outlineWidth) ?: defaults.outlineWidth,
+                bold = boolean(subtitleBoldKey, defaults.bold) ?: defaults.bold,
+                fontSizeSp = integer(subtitleFontSizeSpKey, defaults.fontSizeSp) ?: defaults.fontSizeSp,
+                bottomOffset = integer(subtitleBottomOffsetKey, defaults.bottomOffset) ?: defaults.bottomOffset,
+                stripSdh = boolean(subtitleStripSdhKey, defaults.stripSdh) ?: defaults.stripSdh,
+                useForcedSubtitles = boolean(subtitleUseForcedSubtitlesKey, defaults.useForcedSubtitles)
+                    ?: defaults.useForcedSubtitles,
+                showOnlyPreferredLanguages = boolean(
+                    subtitleShowOnlyPreferredLanguagesKey,
+                    defaults.showOnlyPreferredLanguages,
+                ) ?: defaults.showOnlyPreferredLanguages,
+                appearance = decodeSubtitleAppearance(string(subtitleAppearanceKey)),
+            )
+            SubtitleDevicePreferencesRepository.migrateLegacy(profileId, legacyStyle)
+        }
+    }
+
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowPlayerTitleLogo()?.let { put(showPlayerTitleLogoKey, encodeSyncBoolean(it)) }
+        loadDefaultPlayerLandscape()?.let { put(defaultPlayerLandscapeKey, encodeSyncBoolean(it)) }
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadShowPlayerLoadingStatus()?.let { put(showPlayerLoadingStatusKey, encodeSyncBoolean(it)) }
         loadPauseOverlayEnabled()?.let { put(pauseOverlayEnabledKey, encodeSyncBoolean(it)) }
@@ -1926,18 +2021,6 @@ actual object PlayerSettingsStorage {
         loadSecondaryPreferredAudioLanguage()?.let { put(secondaryPreferredAudioLanguageKey, encodeSyncString(it)) }
         loadPreferredSubtitleLanguage()?.let { put(preferredSubtitleLanguageKey, encodeSyncString(it)) }
         loadSecondaryPreferredSubtitleLanguage()?.let { put(secondaryPreferredSubtitleLanguageKey, encodeSyncString(it)) }
-        loadSubtitleTextColor()?.let { put(subtitleTextColorKey, encodeSyncString(it)) }
-        loadSubtitleAppearance()?.let { put(subtitleAppearanceKey, encodeSyncString(it)) }
-        loadSubtitleBackgroundColor()?.let { put(subtitleBackgroundColorKey, encodeSyncString(it)) }
-        loadSubtitleOutlineColor()?.let { put(subtitleOutlineColorKey, encodeSyncString(it)) }
-        loadSubtitleOutlineEnabled()?.let { put(subtitleOutlineEnabledKey, encodeSyncBoolean(it)) }
-        loadSubtitleOutlineWidth()?.let { put(subtitleOutlineWidthKey, encodeSyncInt(it)) }
-        loadSubtitleBold()?.let { put(subtitleBoldKey, encodeSyncBoolean(it)) }
-        loadSubtitleFontSizeSp()?.let { put(subtitleFontSizeSpKey, encodeSyncInt(it)) }
-        loadSubtitleBottomOffset()?.let { put(subtitleBottomOffsetKey, encodeSyncInt(it)) }
-        loadSubtitleStripSdh()?.let { put(subtitleStripSdhKey, encodeSyncBoolean(it)) }
-        loadSubtitleUseForcedSubtitles()?.let { put(subtitleUseForcedSubtitlesKey, encodeSyncBoolean(it)) }
-        loadSubtitleShowOnlyPreferredLanguages()?.let { put(subtitleShowOnlyPreferredLanguagesKey, encodeSyncBoolean(it)) }
         loadStreamReuseLastLinkEnabled()?.let { put(streamReuseLastLinkEnabledKey, encodeSyncBoolean(it)) }
         loadStreamReuseLastLinkCacheHours()?.let { put(streamReuseLastLinkCacheHoursKey, encodeSyncInt(it)) }
         loadAndroidPlaybackEngine()?.let { put(androidPlaybackEngineKey, encodeSyncString(it)) }
@@ -1950,6 +2033,7 @@ actual object PlayerSettingsStorage {
         }
         loadAndroidLibmpvYuv420pEnabled()?.let { put(androidLibmpvYuv420pEnabledKey, encodeSyncBoolean(it)) }
         loadAndroidExoChaptersEnabled()?.let { put(androidExoChaptersEnabledKey, encodeSyncBoolean(it)) }
+        loadChapterTitleEnabled()?.let { put(chapterTitleEnabledKey, encodeSyncBoolean(it)) }
         loadRememberAudioDelayPerDevice()?.let { put(rememberAudioDelayPerDeviceKey, encodeSyncBoolean(it)) }
         loadPersistAudioAmplification()?.let { put(persistAudioAmplificationKey, encodeSyncBoolean(it)) }
         loadAudioAmplificationDb()?.let { put(audioAmplificationDbKey, encodeSyncInt(it)) }
@@ -2007,6 +2091,7 @@ actual object PlayerSettingsStorage {
         }?.apply()
 
         payload.decodeSyncBoolean(showPlayerTitleLogoKey)?.let(::saveShowPlayerTitleLogo)
+        payload.decodeSyncBoolean(defaultPlayerLandscapeKey)?.let(::saveDefaultPlayerLandscape)
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncBoolean(showPlayerLoadingStatusKey)?.let(::saveShowPlayerLoadingStatus)
         payload.decodeSyncBoolean(pauseOverlayEnabledKey)?.let(::savePauseOverlayEnabled)
@@ -2027,18 +2112,6 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncString(secondaryPreferredAudioLanguageKey)?.let(::saveSecondaryPreferredAudioLanguage)
         payload.decodeSyncString(preferredSubtitleLanguageKey)?.let(::savePreferredSubtitleLanguage)
         payload.decodeSyncString(secondaryPreferredSubtitleLanguageKey)?.let(::saveSecondaryPreferredSubtitleLanguage)
-        payload.decodeSyncString(subtitleTextColorKey)?.let(::saveSubtitleTextColor)
-        payload.decodeSyncString(subtitleAppearanceKey)?.let(::saveSubtitleAppearance)
-        payload.decodeSyncString(subtitleBackgroundColorKey)?.let(::saveSubtitleBackgroundColor)
-        payload.decodeSyncString(subtitleOutlineColorKey)?.let(::saveSubtitleOutlineColor)
-        payload.decodeSyncBoolean(subtitleOutlineEnabledKey)?.let(::saveSubtitleOutlineEnabled)
-        payload.decodeSyncInt(subtitleOutlineWidthKey)?.let(::saveSubtitleOutlineWidth)
-        payload.decodeSyncBoolean(subtitleBoldKey)?.let(::saveSubtitleBold)
-        payload.decodeSyncInt(subtitleFontSizeSpKey)?.let(::saveSubtitleFontSizeSp)
-        payload.decodeSyncInt(subtitleBottomOffsetKey)?.let(::saveSubtitleBottomOffset)
-        payload.decodeSyncBoolean(subtitleStripSdhKey)?.let(::saveSubtitleStripSdh)
-        payload.decodeSyncBoolean(subtitleUseForcedSubtitlesKey)?.let(::saveSubtitleUseForcedSubtitles)
-        payload.decodeSyncBoolean(subtitleShowOnlyPreferredLanguagesKey)?.let(::saveSubtitleShowOnlyPreferredLanguages)
         payload.decodeSyncBoolean(streamReuseLastLinkEnabledKey)?.let(::saveStreamReuseLastLinkEnabled)
         payload.decodeSyncInt(streamReuseLastLinkCacheHoursKey)?.let(::saveStreamReuseLastLinkCacheHours)
         payload.decodeSyncString(androidPlaybackEngineKey)?.let(::saveAndroidPlaybackEngine)
@@ -2048,6 +2121,7 @@ actual object PlayerSettingsStorage {
             ?.let(::saveAndroidLibmpvHardwareDecodingEnabled)
         payload.decodeSyncBoolean(androidLibmpvYuv420pEnabledKey)?.let(::saveAndroidLibmpvYuv420pEnabled)
         payload.decodeSyncBoolean(androidExoChaptersEnabledKey)?.let(::saveAndroidExoChaptersEnabled)
+        payload.decodeSyncBoolean(chapterTitleEnabledKey)?.let(::saveChapterTitleEnabled)
         payload.decodeSyncBoolean(rememberAudioDelayPerDeviceKey)?.let(::saveRememberAudioDelayPerDevice)
         payload.decodeSyncBoolean(persistAudioAmplificationKey)?.let(::savePersistAudioAmplification)
         payload.decodeSyncInt(audioAmplificationDbKey)?.let(::saveAudioAmplificationDb)
@@ -2099,5 +2173,33 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncInt(iosContrastKey)?.let(::saveIosContrast)
         payload.decodeSyncInt(iosSaturationKey)?.let(::saveIosSaturation)
         payload.decodeSyncInt(iosGammaKey)?.let(::saveIosGamma)
+    }
+}
+
+internal actual object SubtitleDevicePreferencesStorage {
+    private const val preferencesName = "nuvio_subtitle_device_preferences"
+    private const val keyPrefix = "subtitle_device_preferences_v1_"
+    private var preferences: SharedPreferences? = null
+
+    fun initialize(context: Context) {
+        preferences = context.applicationContext.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+    }
+
+    actual fun load(profileId: Int): String? =
+        preferences?.getString("$keyPrefix$profileId", null)
+
+    actual fun save(profileId: Int, value: String) {
+        preferences?.edit()?.putString("$keyPrefix$profileId", value)?.apply()
+    }
+ 
+    actual fun saveForMigration(profileId: Int, value: String) {
+        val store = checkNotNull(preferences) { "Subtitle device preference storage is not initialized" }
+        check(store.edit().putString("$keyPrefix$profileId", value).commit()) {
+            "Unable to persist migrated subtitle preferences"
+        }
+    }
+
+    actual fun remove(profileId: Int) {
+        preferences?.edit()?.remove("$keyPrefix$profileId")?.apply()
     }
 }

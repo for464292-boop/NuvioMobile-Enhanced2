@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -114,6 +115,9 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
             .fillMaxSize()
             .background(Color.Black),
     ) {
+        LaunchedEffect(maxWidth, maxHeight) {
+            runtime.isPortraitPlayback = maxHeight > maxWidth
+        }
         val density = LocalDensity.current
         val horizontalSafePadding = playerHorizontalSafePadding()
         val isInPip = rememberIsInPictureInPicture()

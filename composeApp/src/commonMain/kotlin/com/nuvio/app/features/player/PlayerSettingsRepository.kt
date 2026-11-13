@@ -5,6 +5,7 @@ import com.nuvio.app.features.player.skip.AutoSkipSegmentType
 import com.nuvio.app.features.player.skip.NextEpisodeThresholdMode
 import com.nuvio.app.features.streams.StreamAutoPlayMode
 import com.nuvio.app.features.streams.StreamAutoPlaySource
+import com.nuvio.app.features.profiles.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +36,8 @@ fun snapToAllowedTimeout(value: Int): Int {
 data class PlayerSettingsUiState(
     val useLegacyPlayerLayout: Boolean = false,
     val showPlayerTitleLogo: Boolean = false,
+    /** Opens the player in landscape by default. When disabled the player opens in portrait. */
+    val defaultPlayerLandscape: Boolean = true,
     val showLoadingOverlay: Boolean = true,
     val showPlayerLoadingStatus: Boolean = true,
     val pauseOverlayEnabled: Boolean = true,
@@ -65,6 +68,7 @@ data class PlayerSettingsUiState(
     val preferredSubtitleLanguage: String = SubtitleLanguageOption.NONE,
     val secondaryPreferredSubtitleLanguage: String? = null,
     val subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT,
+    val subtitleStylePortrait: SubtitleStyleState = SubtitleStyleState.PORTRAIT_DEFAULT,
     val streamReuseLastLinkEnabled: Boolean = false,
     val streamReuseLastLinkCacheHours: Int = 24,
     val androidPlaybackEngine: AndroidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer,
@@ -72,7 +76,10 @@ data class PlayerSettingsUiState(
     val androidLibmpvVideoOutput: AndroidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext,
     val androidLibmpvHardwareDecodingEnabled: Boolean = true,
     val androidLibmpvYuv420pEnabled: Boolean = false,
+    val androidAnimeUpscaleEnabled: Boolean = false,
+    val androidAnimeLineSharpenEnabled: Boolean = false,
     val androidExoChaptersEnabled: Boolean = false,
+    val chapterTitleEnabled: Boolean = true,
     val rememberAudioDelayPerDevice: Boolean = true,
     val persistAudioAmplification: Boolean = false,
     val audioAmplificationDb: Int = 0,
@@ -149,6 +156,7 @@ object PlayerSettingsRepository {
     private var hasLoaded = false
     private var useLegacyPlayerLayout = false
     private var showPlayerTitleLogo = false
+    private var defaultPlayerLandscape = true
     private var showLoadingOverlay = true
     private var showPlayerLoadingStatus = true
     private var pauseOverlayEnabled = true
@@ -178,6 +186,7 @@ object PlayerSettingsRepository {
     private var preferredSubtitleLanguage = SubtitleLanguageOption.NONE
     private var secondaryPreferredSubtitleLanguage: String? = null
     private var subtitleStyle = SubtitleStyleState.DEFAULT
+    private var subtitleStylePortrait = SubtitleStyleState.PORTRAIT_DEFAULT
     private var streamReuseLastLinkEnabled = false
     private var streamReuseLastLinkCacheHours = 24
     private var androidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer
@@ -185,7 +194,10 @@ object PlayerSettingsRepository {
     private var androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
     private var androidLibmpvHardwareDecodingEnabled = true
     private var androidLibmpvYuv420pEnabled = false
+    private var androidAnimeUpscaleEnabled = false
+    private var androidAnimeLineSharpenEnabled = false
     private var androidExoChaptersEnabled = false
+    private var chapterTitleEnabled = true
     private var rememberAudioDelayPerDevice = true
     private var persistAudioAmplification = false
     private var audioAmplificationDb = 0
@@ -267,6 +279,7 @@ object PlayerSettingsRepository {
         hasLoaded = false
         useLegacyPlayerLayout = false
         showPlayerTitleLogo = false
+        defaultPlayerLandscape = true
         showLoadingOverlay = true
         showPlayerLoadingStatus = true
         pauseOverlayEnabled = true
@@ -296,6 +309,7 @@ object PlayerSettingsRepository {
         preferredSubtitleLanguage = SubtitleLanguageOption.NONE
         secondaryPreferredSubtitleLanguage = null
         subtitleStyle = SubtitleStyleState.DEFAULT
+        subtitleStylePortrait = SubtitleStyleState.PORTRAIT_DEFAULT
         streamReuseLastLinkEnabled = false
         streamReuseLastLinkCacheHours = 24
         androidPlaybackEngine = AndroidPlaybackEngine.ExoPlayer
@@ -303,7 +317,10 @@ object PlayerSettingsRepository {
         androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
         androidLibmpvHardwareDecodingEnabled = true
         androidLibmpvYuv420pEnabled = false
+        androidAnimeUpscaleEnabled = false
+        androidAnimeLineSharpenEnabled = false
         androidExoChaptersEnabled = false
+        chapterTitleEnabled = true
         rememberAudioDelayPerDevice = true
         persistAudioAmplification = false
         audioAmplificationDb = 0
@@ -378,6 +395,7 @@ object PlayerSettingsRepository {
         hasLoaded = true
         useLegacyPlayerLayout = PlayerSettingsStorage.loadUseLegacyPlayerLayout() ?: false
         showPlayerTitleLogo = PlayerSettingsStorage.loadShowPlayerTitleLogo() ?: false
+        defaultPlayerLandscape = PlayerSettingsStorage.loadDefaultPlayerLandscape() ?: true
         showLoadingOverlay = PlayerSettingsStorage.loadShowLoadingOverlay() ?: true
         showPlayerLoadingStatus = PlayerSettingsStorage.loadShowPlayerLoadingStatus() ?: true
         pauseOverlayEnabled = PlayerSettingsStorage.loadPauseOverlayEnabled() ?: true
@@ -415,7 +433,7 @@ object PlayerSettingsRepository {
                 ?: SubtitleLanguageOption.NONE
         secondaryPreferredSubtitleLanguage =
             normalizeLanguageCode(PlayerSettingsStorage.loadSecondaryPreferredSubtitleLanguage())
-        subtitleStyle = SubtitleStyleState(
+        val legacySubtitleStyle = SubtitleStyleState(
             textColor = subtitleColorFromStorage(PlayerSettingsStorage.loadSubtitleTextColor())
                 ?: SubtitleStyleState.DEFAULT.textColor,
             backgroundColor = subtitleColorFromStorage(PlayerSettingsStorage.loadSubtitleBackgroundColor())
@@ -440,6 +458,12 @@ object PlayerSettingsRepository {
                 ?: SubtitleStyleState.DEFAULT.showOnlyPreferredLanguages,
             appearance = decodeSubtitleAppearance(PlayerSettingsStorage.loadSubtitleAppearance()),
         )
+        val subtitleStyles = SubtitleDevicePreferencesRepository.loadOrMigratePair(
+            profileId = ProfileRepository.activeProfileId,
+            legacyStyle = legacySubtitleStyle,
+        )
+        subtitleStyle = subtitleStyles.first
+        subtitleStylePortrait = subtitleStyles.second
         streamReuseLastLinkEnabled = PlayerSettingsStorage.loadStreamReuseLastLinkEnabled() ?: false
         streamReuseLastLinkCacheHours = PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours() ?: 24
         androidPlaybackEngine = PlayerSettingsStorage.loadAndroidPlaybackEngine()
@@ -451,7 +475,10 @@ object PlayerSettingsRepository {
             ?: AndroidLibmpvVideoOutput.GpuNext
         androidLibmpvHardwareDecodingEnabled = PlayerSettingsStorage.loadAndroidLibmpvHardwareDecodingEnabled() ?: true
         androidLibmpvYuv420pEnabled = PlayerSettingsStorage.loadAndroidLibmpvYuv420pEnabled() ?: false
+        androidAnimeUpscaleEnabled = PlayerSettingsStorage.loadAndroidAnimeUpscaleEnabled() ?: false
+        androidAnimeLineSharpenEnabled = PlayerSettingsStorage.loadAndroidAnimeLineSharpenEnabled() ?: false
         androidExoChaptersEnabled = PlayerSettingsStorage.loadAndroidExoChaptersEnabled() ?: false
+        chapterTitleEnabled = PlayerSettingsStorage.loadChapterTitleEnabled() ?: true
         rememberAudioDelayPerDevice = PlayerSettingsStorage.loadRememberAudioDelayPerDevice() ?: true
         persistAudioAmplification = PlayerSettingsStorage.loadPersistAudioAmplification() ?: false
         audioAmplificationDb = (PlayerSettingsStorage.loadAudioAmplificationDb() ?: 0)
@@ -576,6 +603,14 @@ object PlayerSettingsRepository {
         showPlayerTitleLogo = enabled
         publish()
         PlayerSettingsStorage.saveShowPlayerTitleLogo(enabled)
+    }
+
+    fun setDefaultPlayerLandscape(enabled: Boolean) {
+        ensureLoaded()
+        if (defaultPlayerLandscape == enabled) return
+        defaultPlayerLandscape = enabled
+        publish()
+        PlayerSettingsStorage.saveDefaultPlayerLandscape(enabled)
     }
 
     fun setShowLoadingOverlay(enabled: Boolean) {
@@ -818,28 +853,35 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveSecondaryPreferredSubtitleLanguage(normalized)
     }
 
-    fun setSubtitleStyle(style: SubtitleStyleState) {
+    fun setSubtitleStyle(style: SubtitleStyleState, portrait: Boolean = false) {
         ensureLoaded()
         val normalized = style.copy(
             fontSizeSp = style.fontSizeSp.coerceIn(subtitleFontSizeRangeSp),
             bottomOffset = style.bottomOffset.coerceIn(0, 200),
             appearance = style.appearance.normalized(),
         )
-        if (subtitleStyle == normalized) return
+        if (portrait) {
+            val portraitStyle = normalized.withSharedSubtitleBehaviorFrom(subtitleStyle)
+            if (subtitleStylePortrait == portraitStyle) return
+            subtitleStylePortrait = portraitStyle
+            publish()
+            SubtitleDevicePreferencesRepository.savePortrait(
+                ProfileRepository.activeProfileId,
+                portraitStyle,
+            )
+            return
+        }
+
+        val portraitStyle = subtitleStylePortrait.withSharedSubtitleBehaviorFrom(normalized)
+        if (subtitleStyle == normalized && subtitleStylePortrait == portraitStyle) return
         subtitleStyle = normalized
+        subtitleStylePortrait = portraitStyle
         publish()
-        PlayerSettingsStorage.saveSubtitleTextColor(normalized.textColor.toStorageHexString())
-        PlayerSettingsStorage.saveSubtitleBackgroundColor(normalized.backgroundColor.toStorageHexString())
-        PlayerSettingsStorage.saveSubtitleAppearance(normalized.appearance.encode())
-        PlayerSettingsStorage.saveSubtitleOutlineColor(normalized.outlineColor.toStorageHexString())
-        PlayerSettingsStorage.saveSubtitleOutlineEnabled(normalized.outlineEnabled)
-        PlayerSettingsStorage.saveSubtitleOutlineWidth(normalized.outlineWidth)
-        PlayerSettingsStorage.saveSubtitleBold(normalized.bold)
-        PlayerSettingsStorage.saveSubtitleFontSizeSp(normalized.fontSizeSp)
-        PlayerSettingsStorage.saveSubtitleBottomOffset(normalized.bottomOffset)
-        PlayerSettingsStorage.saveSubtitleStripSdh(normalized.stripSdh)
-        PlayerSettingsStorage.saveSubtitleUseForcedSubtitles(normalized.useForcedSubtitles)
-        PlayerSettingsStorage.saveSubtitleShowOnlyPreferredLanguages(normalized.showOnlyPreferredLanguages)
+        SubtitleDevicePreferencesRepository.savePair(
+            ProfileRepository.activeProfileId,
+            normalized,
+            portraitStyle,
+        )
     }
 
     fun setStreamReuseLastLinkEnabled(enabled: Boolean) {
@@ -898,12 +940,36 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveAndroidLibmpvYuv420pEnabled(enabled)
     }
 
+    fun setAndroidAnimeUpscaleEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (androidAnimeUpscaleEnabled == enabled) return
+        androidAnimeUpscaleEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveAndroidAnimeUpscaleEnabled(enabled)
+    }
+
+    fun setAndroidAnimeLineSharpenEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (androidAnimeLineSharpenEnabled == enabled) return
+        androidAnimeLineSharpenEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveAndroidAnimeLineSharpenEnabled(enabled)
+    }
+
     fun setAndroidExoChaptersEnabled(enabled: Boolean) {
         ensureLoaded()
         if (androidExoChaptersEnabled == enabled) return
         androidExoChaptersEnabled = enabled
         publish()
         PlayerSettingsStorage.saveAndroidExoChaptersEnabled(enabled)
+    }
+
+    fun setChapterTitleEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (chapterTitleEnabled == enabled) return
+        chapterTitleEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveChapterTitleEnabled(enabled)
     }
 
     fun setRememberAudioDelayPerDevice(enabled: Boolean) {
@@ -1497,6 +1563,7 @@ object PlayerSettingsRepository {
         _uiState.value = PlayerSettingsUiState(
             useLegacyPlayerLayout = useLegacyPlayerLayout,
             showPlayerTitleLogo = showPlayerTitleLogo,
+            defaultPlayerLandscape = defaultPlayerLandscape,
             showLoadingOverlay = showLoadingOverlay,
             showPlayerLoadingStatus = showPlayerLoadingStatus,
             pauseOverlayEnabled = pauseOverlayEnabled,
@@ -1526,6 +1593,7 @@ object PlayerSettingsRepository {
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
             subtitleStyle = subtitleStyle,
+            subtitleStylePortrait = subtitleStylePortrait,
             streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
             streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
             androidPlaybackEngine = androidPlaybackEngine,
@@ -1533,7 +1601,10 @@ object PlayerSettingsRepository {
             androidLibmpvVideoOutput = androidLibmpvVideoOutput,
             androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
             androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,
+            androidAnimeUpscaleEnabled = androidAnimeUpscaleEnabled,
+            androidAnimeLineSharpenEnabled = androidAnimeLineSharpenEnabled,
             androidExoChaptersEnabled = androidExoChaptersEnabled,
+            chapterTitleEnabled = chapterTitleEnabled,
             rememberAudioDelayPerDevice = rememberAudioDelayPerDevice,
             persistAudioAmplification = persistAudioAmplification,
             audioAmplificationDb = audioAmplificationDb,

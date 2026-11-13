@@ -49,7 +49,9 @@ actual fun LockPlayerToLandscape() {
             }
         }
     }
-    val portrait by PlayerOrientationPreference.portrait.collectAsState()
+    val portraitOverride by PlayerOrientationPreference.portrait.collectAsState()
+    val defaultLandscape = PlayerSettingsRepository.uiState.value.defaultPlayerLandscape
+    val portrait = portraitOverride ?: !defaultLandscape
     LaunchedEffect(portrait) {
         NSNotificationCenter.defaultCenter.postNotificationName(
             if (portrait) preferPlayerPortraitNotification else preferPlayerLandscapeNotification,

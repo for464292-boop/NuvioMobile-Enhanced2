@@ -48,6 +48,14 @@ internal fun PlaybackInterfaceSettings(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_default_landscape),
+                    description = stringResource(Res.string.settings_playback_default_landscape_description),
+                    checked = settings.defaultPlayerLandscape,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setDefaultPlayerLandscape,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_show_title_logo),
                     description = stringResource(Res.string.settings_playback_show_title_logo_description),
                     checked = settings.showPlayerTitleLogo,
@@ -109,6 +117,15 @@ internal fun PlaybackInterfaceSettings(
                     checked = settings.androidExoChaptersEnabled,
                     isTablet = isTablet,
                     onCheckedChange = PlayerSettingsRepository::setAndroidExoChaptersEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_chapter_title),
+                    description = stringResource(Res.string.settings_playback_chapter_title_description),
+                    checked = settings.chapterTitleEnabled,
+                    enabled = settings.androidExoChaptersEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setChapterTitleEnabled,
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
