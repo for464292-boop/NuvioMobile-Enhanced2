@@ -125,6 +125,8 @@ internal fun SubFlowWordCardOverlay(
                     maxBarWidth - controlsWidth - 12.dp,
                 ).coerceAtLeast(220.dp)
                 val barWidth = minOf(cardWidth + controlsWidth + 12.dp, maxBarWidth)
+                val portraitLayout = maxHeight > maxWidth
+                val cardMaxHeight = minOf(screenHeight * 0.72f, 430.dp)
 
                 Column(
                     modifier = Modifier
@@ -136,6 +138,7 @@ internal fun SubFlowWordCardOverlay(
                             bottom = bottomInset,
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = if (portraitLayout) Arrangement.Center else Arrangement.Top,
                 ) {
                     SubFlowElevatedSubtitleBar(
                         subtitleStyle = subtitleStyle,
@@ -143,8 +146,10 @@ internal fun SubFlowWordCardOverlay(
                     )
                     Spacer(modifier = Modifier.height(gap))
                     BoxWithConstraints(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentAlignment = Alignment.TopCenter,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (portraitLayout) Modifier else Modifier.weight(1f)),
+                        contentAlignment = if (portraitLayout) Alignment.Center else Alignment.TopCenter,
                     ) {
                         SubFlowWordCard(
                             selection = current,
@@ -154,7 +159,7 @@ internal fun SubFlowWordCardOverlay(
                             onClose = { SubFlowRepository.closeCard() },
                             modifier = Modifier
                                 .width(cardWidth)
-                                .heightIn(max = minOf(maxHeight, screenHeight * 0.72f, 430.dp)),
+                                .heightIn(max = minOf(maxHeight, cardMaxHeight)),
                         )
                     }
                 }
