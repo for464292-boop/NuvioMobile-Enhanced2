@@ -3,7 +3,9 @@ package com.nuvio.app.features.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.nuvio.app.core.ui.DialogButton
@@ -157,6 +159,7 @@ internal fun PlaybackSubtitleSettings(
                     onClick = { showSubtitleOrientationDialog = true },
                 )
             }
+            Spacer(modifier = Modifier.height(if (isTablet) 18.dp else 12.dp))
             SubtitleAppearanceSettings(
                 style = editingStyle,
                 isTablet = isTablet,
