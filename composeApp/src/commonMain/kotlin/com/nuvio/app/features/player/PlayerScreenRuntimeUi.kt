@@ -1107,7 +1107,9 @@ private fun PlayerScreenRuntime.RenderPlayerModals() {
             if (hasBurnedInServerSubtitle) clearServerSubtitleTrack()
         },
         onFetchAddonSubtitles = { fetchAddonSubtitlesForActiveItem() },
-        onSubtitleStyleChanged = PlayerSettingsRepository::setSubtitleStyle,
+        onSubtitleStyleChanged = { style ->
+            PlayerSettingsRepository.setSubtitleStyle(style, portrait = isPortraitPlayback)
+        },
         onSubtitleDelayChanged = { delayMs -> setSubtitleDelay(delayMs) },
         onSubtitleDelayReset = { setSubtitleDelay(0) },
         onSyncByEarClick = { openSubtitleSyncByEar() },
