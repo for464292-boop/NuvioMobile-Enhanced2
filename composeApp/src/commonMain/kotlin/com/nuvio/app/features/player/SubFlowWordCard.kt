@@ -238,7 +238,7 @@ private fun SubFlowWordCard(
                             )
                         }
                     }
-                    if (preferences.showStatus) {
+                    if (preferences.showStatus && entry.status != SubFlowWordStatus.New) {
                         SubFlowStatusBadge(status = entry.status, color = statusColor)
                     }
                     Spacer(modifier = Modifier.size(4.dp))
